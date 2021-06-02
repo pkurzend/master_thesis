@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=nbeats
-#SBATCH --output=logs/test%j.log
-#SBATCH --error=errs/test%j.err
+#SBATCH --output=test%j.log
+#SBATCH --error=test%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=kurzendo@uni-hildesheim.de
 

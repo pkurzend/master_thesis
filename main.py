@@ -23,6 +23,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gluonts.time_feature import get_seasonality
 import numpy as np
+import os 
+
+
+# creates folders
+folders = ['models', 'gridresults', 'errs', 'logs']
+for f in folders:
+    try:
+        os.makedirs(f)
+    except OSError:
+        pass
 
 
 dataset_name = 'traffic_nips'

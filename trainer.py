@@ -1,0 +1,184 @@
+import time
+from typing import List, Optional, Union, NamedTuple
+import pts
+from tqdm import tqdm
+import wandb
+
+import torch
+import torch.nn as nn
+from torch.optim import Adam
+from torch.optim.lr_scheduler import OneCycleLR
+from torch.utils.data import DataLoader
+
+from gluonts.core.component import validated
+from pts import Trainer
+
+from .utils import device
+
+class Trainer(Trainer):
+    @validated()
+    def __init__(
+        self,
+        epochs: int = 100,
+        batch_size: int = 32,
+        num_batches_per_epoch: int = 50,
+        learning_rate: float = 1e-3,
+        weight_decay: float = 1e-6,
+        maximum_learning_rate: float = 1e-5,
+        wandb_mode: str = "disabled",
+        restore_best: bool = True,
+        clip_gradient: Optional[float] = None,
+        device: Optional[Union[torch.device, str]] = None,
+        **kwargs,
+    ) -> None:
+
+        print('new Trainer')
+       
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.num_batches_per_epoch = num_batches_per_epoch
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.maximum_learning_rate = maximum_learning_rate
+        self.clip_gradient = clip_gradient
+        self.device = device
+        self.restore_best = restore_best
+        wandb.init(mode=wandb_mode, **kwargs)
+
+    def __call__(
+        self,
+        net: nn.Module,
+        train_iter: DataLoader,
+        validation_iter: Optional[DataLoader] = None,
+    ) -> None:
+        wandb.watch(net, log="all", log_freq=self.num_batches_per_epoch)
+
+        print('calling new trainer################################')
+
+        self.first_train_batch = True
+        self.first_val_batch = True
+        
+        optimizer = Adam(
+            net.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay
+        )
+
+        lr_scheduler = OneCycleLR(
+            optimizer,
+            max_lr=self.maximum_learning_rate,
+            steps_per_epoch=self.num_batches_per_epoch,
+            epochs=self.epochs,
+        )
+        best_loss = np.inf
+        for epoch_no in range(self.epochs):
+            # mark epoch start time
+            tic = time.time()
+            avg_epoch_loss = 0.0
+
+
+            if validation_iter is not None:
+                avg_epoch_loss_val = 0.0
+                val_batch_no = 1
+
+            
+            # if validation_iter is not None:
+                # # val_iter_obj = list(zip(range(1, validation_iter.batch_size+1), tqdm(validation_iter)))
+                # # val_iter_obj = 
+                # print('val_iter_obj ',  len(val_iter_obj))
+                # print(validation_iter.__dict__)
+                # sys.exit()
+                # val_batch_no = 1
+
+
+                
+
+
+
+            with tqdm(train_iter) as it:
+                # print('it', next(iter(train_iter)))    
+
+                for batch_no, data_entry in enumerate(it, start=1):
+
+                    optimizer.zero_grad()
+
+
+                    if self.first_train_batch:
+                        self.first_train_batch = False
+                        for name, t in data_entry.items():
+                          print('train ', name, t.shape)                    
+
+                    # validation_loss
+                    
+                    if validation_iter is not None:
+                        with torch.no_grad():
+                            val_data_entry = next(iter(validation_iter))
+                            # print(val_data_entry)
+                            if self.first_val_batch:
+                                self.first_val_batch = False
+                                for name, t in val_data_entry.items():
+                                  print('val ', name, t.shape)
+
+                            inputs_val = [v.to(self.device) for v in val_data_entry.values()]
+
+
+                            output_val = net(*inputs_val)
+
+                            if isinstance(output_val, (list, tuple)):
+                                loss_val = output_val[0]
+                            else:
+                                loss_val = output_val
+                            
+                            avg_epoch_loss_val += loss_val.item()
+
+
+                    inputs = [v.to(self.device) for v in data_entry.values()]
+                    
+                    
+  
+                    output = net(*inputs)
+                    if isinstance(output, (list, tuple)):
+                        loss = output[0]
+                    else:
+                        loss = output
+
+
+                    avg_epoch_loss += loss.item()
+                    if validation_iter is not None:
+                        post_fix_dict = {
+                                "avg_epoch_loss": avg_epoch_loss / batch_no,
+                                "avg_epoch_loss_val": avg_epoch_loss_val / batch_no,
+                                "epoch": epoch_no,
+                        }
+                        wandb.log({"loss_val": loss_val.item()})
+                    else:
+                        post_fix_dict={
+                                "avg_epoch_loss": avg_epoch_loss / batch_no,
+                                "epoch": epoch_no,
+                        }
+                    wandb.log({"loss": loss.item()})
+                    it.set_postfix(ordered_dict=post_fix_dict, refresh=False)
+
+
+
+                    loss.backward()
+                    if self.clip_gradient is not None:
+                        nn.utils.clip_grad_norm_(net.parameters(), self.clip_gradient)
+
+                    optimizer.step()
+                    lr_scheduler.step()
+
+                    if self.num_batches_per_epoch == batch_no:
+                        break
+
+                # save best model:
+                if avg_epoch_loss / self.num_batches_per_epoch < best_loss:
+                  torch.save(net.state_dict(), 'best-model-parameters.pt')
+                  best_loss = avg_epoch_loss / self.num_batches_per_epoch
+            # mark epoch end time and log time cost of current epoch
+            toc = time.time()
+
+
+        # restore best model
+        net.load_state_dict(torch.load('best-model-parameters.pt'))
+
+
+        # writer.close()

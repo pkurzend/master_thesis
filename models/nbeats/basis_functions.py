@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..utils import device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class GenericBasis(torch.nn.Module):
     """

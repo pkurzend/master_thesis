@@ -12,9 +12,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch 
 
+from gluonts.dataset.split import OffsetSplitter
+from gluonts.dataset.common import ListDataset
 
 
-def load_dataset(name='traffic_nips', validation_set=True):
+
+def load_dataset(name='traffic_nips', validation_set=True, train_pct=0.7):
 
     dataset = get_dataset("traffic_nips", regenerate=False)
     print(dataset.train.__dict__)
@@ -25,7 +28,7 @@ def load_dataset(name='traffic_nips', validation_set=True):
                                    max_target_dim=int(dataset.metadata.feat_static_cat[0].cardinality))
 
     if validation_set:
-        split_offset=int(next(iter(dataset.train))['target'].shape[0]*0.7)
+        split_offset=int(next(iter(dataset.train))['target'].shape[0]*train_pct)
         prediction_length=next(iter(dataset.train))['target'].shape[0]
         splitter = OffsetSplitter(split_offset=split_offset, prediction_length=prediction_length-split_offset)
         dataset_train, dataset_val = splitter.split(dataset.train)
@@ -67,7 +70,7 @@ def load_dataset(name='traffic_nips', validation_set=True):
     print(dataset_test.list_data[0]['target'].shape)
 
     if validation_set:
-        return dataset, dataset_train, dataset_val, dataset_test
+        return dataset, dataset_train, dataset_val, dataset_test, split_offset
     else: 
         return dataset, dataset_train, dataset_test
 

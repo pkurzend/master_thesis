@@ -4,6 +4,7 @@ import pts
 from tqdm import tqdm
 import wandb
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -13,7 +14,7 @@ from torch.utils.data import DataLoader
 from gluonts.core.component import validated
 from pts import Trainer
 
-from .utils import device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Trainer(Trainer):
     @validated()
@@ -68,7 +69,15 @@ class Trainer(Trainer):
             steps_per_epoch=self.num_batches_per_epoch,
             epochs=self.epochs,
         )
+
         best_loss = np.inf
+
+        # store losses
+        train_losses = []
+        train_epoch_losses = []
+        val_losses = [] if validation_iter is not None else None
+        val_epoch_losses = [] if validation_iter is not None else None
+
         for epoch_no in range(self.epochs):
             # mark epoch start time
             tic = time.time()
@@ -78,19 +87,6 @@ class Trainer(Trainer):
             if validation_iter is not None:
                 avg_epoch_loss_val = 0.0
                 val_batch_no = 1
-
-            
-            # if validation_iter is not None:
-                # # val_iter_obj = list(zip(range(1, validation_iter.batch_size+1), tqdm(validation_iter)))
-                # # val_iter_obj = 
-                # print('val_iter_obj ',  len(val_iter_obj))
-                # print(validation_iter.__dict__)
-                # sys.exit()
-                # val_batch_no = 1
-
-
-                
-
 
 
             with tqdm(train_iter) as it:
@@ -107,7 +103,6 @@ class Trainer(Trainer):
                           print('train ', name, t.shape)                    
 
                     # validation_loss
-                    
                     if validation_iter is not None:
                         with torch.no_grad():
                             val_data_entry = next(iter(validation_iter))
@@ -149,6 +144,9 @@ class Trainer(Trainer):
                                 "epoch": epoch_no,
                         }
                         wandb.log({"loss_val": loss_val.item()})
+
+                        val_losses.append(avg_epoch_loss_val / batch_no)
+
                     else:
                         post_fix_dict={
                                 "avg_epoch_loss": avg_epoch_loss / batch_no,
@@ -156,6 +154,8 @@ class Trainer(Trainer):
                         }
                     wandb.log({"loss": loss.item()})
                     it.set_postfix(ordered_dict=post_fix_dict, refresh=False)
+
+                    train_losses.append(avg_epoch_loss / batch_no)
 
 
 
@@ -170,15 +170,25 @@ class Trainer(Trainer):
                         break
 
                 # save best model:
-                if avg_epoch_loss / self.num_batches_per_epoch < best_loss:
-                  torch.save(net.state_dict(), 'best-model-parameters.pt')
-                  best_loss = avg_epoch_loss / self.num_batches_per_epoch
+                if validation_iter is not None:
+                    if avg_epoch_loss_val / self.num_batches_per_epoch < best_loss:
+                        torch.save(net.state_dict(), 'best-model-parameters.pt')
+                        best_loss = avg_epoch_loss_val / self.num_batches_per_epoch
+                else:
+                    if avg_epoch_loss / self.num_batches_per_epoch < best_loss:
+                        torch.save(net.state_dict(), 'best-model-parameters.pt')
+                        best_loss = avg_epoch_loss / self.num_batches_per_epoch
+
             # mark epoch end time and log time cost of current epoch
             toc = time.time()
 
 
+            # save epoch losses
+            train_epoch_losses.append(avg_epoch_loss / self.num_batches_per_epoch)
+            val_epoch_losses.append(avg_epoch_loss_val / self.num_batches_per_epoch)
+
         # restore best model
         net.load_state_dict(torch.load('best-model-parameters.pt'))
 
-
+        return train_losses, train_epoch_losses, val_losses, val_epoch_losses
         # writer.close()

@@ -1,7 +1,9 @@
 from .estimator_base import PyTorchEstimator 
-from typing import List, Optional
+
+from typing import List, Optional, Union, NamedTuple, Tuple
 
 import torch
+import torch.nn as nn
 import numpy as np
 
 from gluonts.core.component import validated
@@ -40,8 +42,10 @@ from pts.feature import (
 from .estimator_base import PyTorchEstimator 
 from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock
 
+from .trainer import Trainer
 
-from ...utils import device
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 
@@ -148,8 +152,9 @@ class NBEATSEstimator(PyTorchEstimator):
         use_feat_dynamic_real: bool = False,
         stack_features_along_time : bool = False, # if False, data has shape (bacht_size, context_length, input_dim) where input_dim = target_dim + n_lags*target_dim + embedding_dim*target_dim + n_time_features
         compute_input_dim : bool = True,
+        n_gpus : int = 1,
 
-
+        split_offset : int = 0,
         pick_incomplete: bool = False,
         lags_seq: Optional[List[int]] = None,
         time_features: Optional[List[TimeFeature]] = None,
@@ -176,7 +181,7 @@ class NBEATSEstimator(PyTorchEstimator):
         self.num_of_harmonics=num_of_harmonics 
 
 
-
+        self.n_gpus = n_gpus
 
         self.freq = freq
 
@@ -374,7 +379,8 @@ class NBEATSEstimator(PyTorchEstimator):
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
-            num_of_harmonics=self.num_of_harmonics
+            num_of_harmonics=self.num_of_harmonics,
+            n_gpus=self.n_gpus
         ).to(device)
             
 

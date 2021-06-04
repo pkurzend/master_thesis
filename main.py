@@ -1,11 +1,11 @@
 
 
-from .models.nbeats import NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock
-from .models.estimators.nbeats_estimator import NBEATSEstimator, 
-from .dataset.loader import load_dataset, generate_data, plot_data, 
+from models.nbeats import NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock
+from models.estimators.nbeats_estimator import NBEATSEstimator
+from dataset.loader import load_dataset, generate_data, plot_data
 import sys 
-from .utils import device
-from .trainer import Trainer
+
+from models.estimators.trainer import Trainer
 
 
 from gluonts.dataset.multivariate_grouper import MultivariateGrouper
@@ -24,6 +24,17 @@ import torch.nn.functional as F
 from gluonts.time_feature import get_seasonality
 import numpy as np
 import os 
+from subprocess import call
+
+
+print('__Number CUDA Devices:', torch.cuda.device_count())
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print(torch.cuda.get_device_name(0))
+for i in range(torch.cuda.device_count()):
+    print(torch.cuda.get_device_name(i))
+
+# call(["nvidia-smi", "--format=csv", "--query-gpu=index,name,driver_version,memory.total,memory.used,memory.free"])
 
 
 # creates folders
@@ -37,7 +48,7 @@ for f in folders:
 
 dataset_name = 'traffic_nips'
 
-dataset, dataset_train, dataset_val, dataset_test = load_dataset(name=dataset_name)
+dataset, dataset_train, dataset_val, dataset_test, split_offset = load_dataset(name=dataset_name, train_pct=0.7)
 
 evaluator = MultivariateEvaluator(quantiles=(np.arange(20)/20.0)[1:],
                                   target_agg_funcs={'sum': np.sum})
@@ -49,30 +60,38 @@ estimator = NBEATSEstimator(
     prediction_length=dataset.metadata.prediction_length,
     input_dim=3856,
     freq=dataset.metadata.freq,
+    split_offset=split_offset,
     loss_function='MAPE',
     context_length=120,
-    stack_features_along_time=False,
+    stack_features_along_time=True,
     block=TimeAttentionNBeatsBlock,
-    stacks=6,
-    linear_layers=2,
-    layer_size=512//2,
+    stacks=30,
+    linear_layers=4,
+    layer_size=512,
     attention_layers=1,
     attention_embedding_size=512,
-    attention_heads=1,
-    interpretable=True,
+    attention_heads=4,
+    interpretable=False,
+    n_gpus=2,
     # use_time_features=True,
     trainer=Trainer(device=device,
                     epochs=4,
                     learning_rate=1e-5,
                     maximum_learning_rate=1e-3,
-                    num_batches_per_epoch=3,
-                    batch_size=64,
+                    num_batches_per_epoch=100,
+                    batch_size=10,
                     clip_gradient=1.0
                     )
 )
 
 
-predictor = estimator.train(dataset_train, dataset_val)
+predictor = estimator.train(dataset_train, dataset_val, num_workers=4)
+
+train_losses = estimator.history['train_epoch_losses']
+val_losses = estimator.history['val_epoch_losses']
+for train_loss, val_loss in zip(train_losses, val_losses):
+    print('Train loss: ', train_loss, '\t', 'Val loss: ', val_loss)
+
 
 
 forecast_it, ts_it = make_evaluation_predictions(dataset=dataset_val,

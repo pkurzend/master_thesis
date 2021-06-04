@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from .basis_functions import GenericBasis, TrendBasis, SeasonalityBasis, ExogenousBasisInterpretable
 from .blocks import NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock
 
-from ..utils import device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class NBeats(torch.nn.Module):

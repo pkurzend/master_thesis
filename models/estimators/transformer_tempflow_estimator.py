@@ -40,8 +40,9 @@ from pts.model.transformer_tempflow.transformer_tempflow_network import (
     TransformerTempFlowPredictionNetwork,
 )
 
+from .trainer import Trainer
 
-from ...utils import device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class TransformerTempFlowEstimator(PyTorchEstimator):
     @validated()

@@ -6,8 +6,9 @@
 #SBATCH --mail-user=kurzendo@uni-hildesheim.de
 
 # ## FOR GPU USE:
-#SBATCH --partition=TEST
-#SBATCH --gres=gpu:1
+#SBATCH --partition=STUD
+##SBATCH --gres=gpu:1
+#SBATCH--gpus=2
 
 
 

@@ -3,8 +3,8 @@ import torch.nn as nn
 from torch.utils import data
 from torch.utils.data import DataLoader
 
+from typing import List, Optional, Union, NamedTuple, Tuple
 
-from typing import Tuple, List
 import numpy as np
 import pandas as pd
 
@@ -23,13 +23,14 @@ from pts.model import get_module_forward_input_names
 from pts.dataset.loader import TransformedIterableDataset
 
 
-from ..utils.utils import device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class TrainOutput(NamedTuple):
     transformation: Transformation
     trained_net: nn.Module
     predictor: PyTorchPredictor
+
 
 
 class PyTorchEstimator(Estimator):
@@ -148,11 +149,18 @@ class PyTorchEstimator(Estimator):
                 **kwargs,
             )
         print('estimator call trainer')
-        self.trainer(
+        train_losses, train_epoch_losses, val_losses, val_epoch_losses = self.trainer(
             net=trained_net,
             train_iter=training_data_loader,
             validation_iter=validation_data_loader,
         )
+        self.history = {
+            'train_losses' : train_losses,
+            'train_epoch_losses' : train_epoch_losses
+        }
+        if val_losses is not None :
+            self.history['val_losses'] = val_losses
+            self.history['val_epoch_losses'] = val_epoch_losses
 
         return TrainOutput(
             transformation=transformation,

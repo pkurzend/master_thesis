@@ -40,7 +40,7 @@ from pts.feature import (
 )
 
 from .estimator_base import PyTorchEstimator 
-from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock
+from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock, MyDataParallel
 
 from .trainer import Trainer
 

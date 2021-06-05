@@ -30,6 +30,9 @@ class MyDataParallel(torch.nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
 
+    def unParallelize(self):
+        return self.module 
+
 
 
 class NBEATSTrainingNetwork(nn.Module):
@@ -130,8 +133,8 @@ class NBEATSTrainingNetwork(nn.Module):
                                            num_of_harmonics=num_of_harmonics
                                            )
 
-        if self.n_gpus>1:
-            self.nb_model = MyDataParallel(self.nb_model, device_ids = list(range(self.n_gpus)))
+        # if self.n_gpus>1:
+        #     self.nb_model = MyDataParallel(self.nb_model, device_ids = list(range(self.n_gpus)))
 
 
     @staticmethod

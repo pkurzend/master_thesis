@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 from gluonts.core.component import validated
 from pts import Trainer
 
+from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock, MyDataParallel
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Trainer(Trainer):
@@ -70,6 +72,10 @@ class Trainer(Trainer):
             epochs=self.epochs,
         )
 
+
+        # make model use several gpus
+        net = MyDataParallel(net)
+
         best_loss = np.inf
 
         # store losses
@@ -121,7 +127,10 @@ class Trainer(Trainer):
                                 loss_val = output_val[0]
                             else:
                                 loss_val = output_val
-                            
+                            print('loss val ', loss_val)
+                            if loss_val.shape[0] > 1:
+                                loss_val = loss_val.mean()
+                            print('loss val mean ', loss_val)
                             avg_epoch_loss_val += loss_val.item()
 
 
@@ -135,7 +144,8 @@ class Trainer(Trainer):
                     else:
                         loss = output
 
-
+                    if loss.shape[0] > 1:
+                        loss = loss.mean()
                     avg_epoch_loss += loss.item()
                     if validation_iter is not None:
                         post_fix_dict = {
@@ -188,7 +198,9 @@ class Trainer(Trainer):
             val_epoch_losses.append(avg_epoch_loss_val / self.num_batches_per_epoch)
 
         # restore best model
+        
         net.load_state_dict(torch.load('best-model-parameters.pt'))
+        net = net.unParallelize()
 
         return train_losses, train_epoch_losses, val_losses, val_epoch_losses
         # writer.close()

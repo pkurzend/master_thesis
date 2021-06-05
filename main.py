@@ -64,7 +64,7 @@ estimator = NBEATSEstimator(
     loss_function='MAPE',
     context_length=120,
     stack_features_along_time=True,
-    block=TimeAttentionNBeatsBlock,
+    block=MultivariateNBeatsBlock,
     stacks=30,
     linear_layers=4,
     layer_size=512,
@@ -79,7 +79,7 @@ estimator = NBEATSEstimator(
                     learning_rate=1e-5,
                     maximum_learning_rate=1e-3,
                     num_batches_per_epoch=100,
-                    batch_size=10,
+                    batch_size=32,
                     clip_gradient=1.0
                     )
 )

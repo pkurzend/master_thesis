@@ -1,11 +1,38 @@
-# embedding sizes
-ess = [300, 100, 30, 10]
-# percentage of training data used
-tps = [1, 0.5, 0.25, 0.125]
+
 # learning rates
-lrs = [1e-6, 1e-5, 1e-4, 1e-3]
-# fraction of data in memory
-data_frac = [1, 0.5, 0.25]
+lrs = [1e-4, 1e-5, 1e-6]
+
+
+
+stack_features_along_time = [0, 1]
+
+loss_functions = ['MAPE', 'MASE', 'sMAPE']
+
+blocks = [0, 1, 2, 3]
+
+stacks = [10, 15, 20, 25, 30]
+
+linear_layers = [2, 4]
+
+layer_sizes = [512]
+
+interpretable = [0, 1]
+
+attention_layers = [1, 2]
+
+attention_heads = [1, 2, 4]
+
+attention_embedding_sizes = [256, 512]
+
+batch_size = [10, 32, 64]
+
+trend_layer_sizes = [256, 512]
+
+seasonality_layer_sizes = [512, 2048]
+degree_of_polynomials = [2, 3, 4]
+
+dataset_names = ['exchange_rate', 'electricity_nips', 'traffic_nips', 'solar_nips' , 'taxi_30min']
+
 
 ##########
 # TEST MODE
@@ -21,7 +48,7 @@ if testing:
 import os
 
 # creates folders
-folders = ['models', 'gridresults', 'tb_logs', 'errs', 'logs']
+folders = ['models', 'gridresults', 'errs', 'logs']
 for f in folders:
     try:
         os.makedirs(f)

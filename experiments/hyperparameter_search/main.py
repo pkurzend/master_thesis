@@ -5,7 +5,7 @@ from models.estimators.nbeats_estimator import NBEATSEstimator
 from dataset.loader import load_dataset, generate_data, plot_data
 import sys 
 
-from models.estimators.trainer import Trainer
+from ...models.estimators.trainer import Trainer
 
 
 from gluonts.dataset.multivariate_grouper import MultivariateGrouper
@@ -57,7 +57,6 @@ hp_names = [
     ('attention_embedding_size', int),
     ('attention_heads', int),
     ('learning_rate', float),
-    ('maximum_learning_rate', float),
     ('batch_size', int),
     ('trend_layer_size', int),
     ('seasonality_layer_size', int),
@@ -66,17 +65,16 @@ hp_names = [
 ]
 hp_dict = {   hp_names[0] : hp_names[1](sys.argv[i+1]) for i in range(len(hp_names))    }
  
-stack_features_along_time = hp_dict['stack_features_along_time']
+stack_features_along_time = hp_dict['stack_features_along_time'] # 0 or 1
 loss_function = hp_dict['loss_function']
 stacks = hp_dict['stacks']
 linear_layers = hp_dict['linear_layers']
 layer_size = hp_dict['layer_size']
-interpretable = hp_dict['interpretable']
+interpretable = hp_dict['interpretable'] # 0 or 1
 attention_layers = hp_dict['attention_layers']
 attention_embedding_size = hp_dict['attention_embedding_size']
 attention_heads = hp_dict['attention_heads']
 learning_rate = hp_dict['learning_rate']
-maximum_learning_rate = hp_dict['maximum_learning_rate']
 batch_size = hp_dict['batch_size']
 trend_layer_size = hp_dict['trend_layer_size']
 seasonality_layer_size = hp_dict['seasonality_layer_size']
@@ -84,7 +82,7 @@ degree_of_polynomial = hp_dict['degree_of_polynomial']
 dataset_name = hp_dict['dataset_name']
 
 block_types = [NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock]
-block = block_types[hp_dict['block']]
+block = block_types[hp_dict['block']] 
 
 
 
@@ -126,7 +124,7 @@ estimator = NBEATSEstimator(
     trainer=Trainer(device=device,
                     epochs=20,
                     learning_rate=learning_rate,
-                    maximum_learning_rate=maximum_learning_rate,
+                    maximum_learning_rate=1e-3,
                     num_batches_per_epoch=100,
                     batch_size=batch_size,
                     clip_gradient=1.0
@@ -156,6 +154,41 @@ print(len(targets))
 
 
 agg_metric, _ = evaluator(targets, forecasts, num_series=len(dataset_test))
+
+
+mse = agg_metric['MSE']
+mase = agg_metric['MASE']
+mape = agg_metric['MAPE']
+smape = agg_metric['sMAPE']
+
+mse_sum = agg_metric['m_sum_MSE']
+mase_sum = agg_metric['m_sum_MASE']
+mape_sum = agg_metric['m_sum_MAPE']
+smape_sum = agg_metric['m_sum_sMAPE']
+
+
+result_obj = {
+    'metrcs' : {
+        'mse' : mse,
+        'mase' : mase,
+        'mape' : mape,
+        'smape' : smape,
+        'm_sum_mse' : mse_sum,
+        'm_sum_mase' : mase_sum,
+        'm_sum_mape' : mape_sum,
+        'm_sum_smape' : smape_sum
+    },
+    'losses' : estimator.history,
+    'hyperparameters' : hp_dict,
+}
+
+
+modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items()])
+
+import pickle 
+filename = F"gridresults/{modelpath}.pkl"
+with open(filename, 'wb') as f:
+  pickle.dump(result_obj, f)
 
 
 

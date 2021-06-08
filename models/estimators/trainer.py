@@ -80,18 +80,23 @@ class Trainer(Trainer):
 
 
         # make model use several gpus
-        net = MyDataParallel(net)
+        # net = MyDataParallel(net)
 
         best_loss = np.inf
-        best_model_file_name = 'models/' + str(uuid.uuid4())+'best-model.pt'
+
+        if os.path.exists('models/'):
+            best_model_file_name = 'models/' + str(uuid.uuid4())+'best-model.pt'
+        else:
+            best_model_file_name = str(uuid.uuid4())+'best-model.pt'
+
 
         nan_loss = False
 
         # store losses
         train_losses = []
         train_epoch_losses = []
-        val_losses = [] if validation_iter is not None else None
-        val_epoch_losses = [] if validation_iter is not None else None
+        val_losses = [] 
+        val_epoch_losses = [] 
 
         for epoch_no in range(self.epochs):
             # mark epoch start time
@@ -136,8 +141,8 @@ class Trainer(Trainer):
                                 loss_val = output_val[0]
                             else:
                                 loss_val = output_val
-                            # print('loss val ', loss_val)
-                            if loss_val.shape[0] > 1:
+                            # print('loss val ', loss_val, loss_val.shape)
+                            if len(loss_val.shape) > 0: #false for torch.tensor(1.4).shape = torch.size([]), true for torch.tensor([1.4, 1.5]).shape = torch.size([2,])
                                 loss_val = loss_val.mean()
                             # print('loss val mean ', loss_val)
                             avg_epoch_loss_val += loss_val.item()
@@ -153,12 +158,12 @@ class Trainer(Trainer):
                     else:
                         loss = output
 
-                    if loss.shape[0] > 1:
+                    if len(loss.shape) > 0:
                         loss = loss.mean()
                     avg_epoch_loss += loss.item()
 
-
-                    if (torch.isnan(loss).any()) or (torch.isnan(loss_val).any()):
+                    halt_cond =  (torch.isnan(loss).any()) or (torch.isnan(loss_val).any()) if validation_iter is not None else torch.isnan(loss).any()
+                    if halt_cond:
                         nan_loss = True
                         break
 
@@ -212,7 +217,8 @@ class Trainer(Trainer):
 
             # save epoch losses
             train_epoch_losses.append(avg_epoch_loss / self.num_batches_per_epoch)
-            val_epoch_losses.append(avg_epoch_loss_val / self.num_batches_per_epoch)
+            if validation_iter is not None:
+                val_epoch_losses.append(avg_epoch_loss_val / self.num_batches_per_epoch)
 
             if nan_loss: 
                 break
@@ -221,8 +227,7 @@ class Trainer(Trainer):
         net.load_state_dict(torch.load(best_model_file_name))
         
         os.remove(best_model_file_name)
-        net = net.unParallelize()
+        # net = net.unParallelize()
         
 
         return train_losses, train_epoch_losses, val_losses, val_epoch_losses
-        # writer.close()

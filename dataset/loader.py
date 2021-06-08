@@ -19,55 +19,42 @@ from gluonts.dataset.common import ListDataset
 
 def load_dataset(name='traffic_nips', validation_set=True, train_pct=0.7):
 
-    dataset = get_dataset("traffic_nips", regenerate=False)
+    dataset = get_dataset(name, regenerate=False)
     print(dataset.train.__dict__)
     print(dataset.test.__dict__)
 
     train_grouper = MultivariateGrouper(max_target_dim=int(dataset.metadata.feat_static_cat[0].cardinality))
     test_grouper = MultivariateGrouper(num_test_dates=int(len(dataset.test)/len(dataset.train)), 
                                    max_target_dim=int(dataset.metadata.feat_static_cat[0].cardinality))
+ 
+        
+    dataset_train = train_grouper(dataset.train)
+    dataset_test = test_grouper(dataset.test)  # ListDataset  but with target 2 dimensional
+
 
     if validation_set:
-        split_offset=int(next(iter(dataset.train))['target'].shape[0]*train_pct)
-        prediction_length=next(iter(dataset.train))['target'].shape[0]
-        splitter = OffsetSplitter(split_offset=split_offset, prediction_length=prediction_length-split_offset)
-        dataset_train, dataset_val = splitter.split(dataset.train)
-
-        dataset_train = ListDataset(dataset_train[1], freq=dataset.metadata.freq, one_dim_target=False) # listDataset
-        dataset_val = ListDataset(dataset_val[1], freq=dataset.metadata.freq, one_dim_target=False) # listDataset
-
-    else:   
-        dataset_train = train_grouper(dataset.train)
-
-    dataset_test = test_grouper(dataset.test)  # ListDataset  but with target 2 dimensional
-    print(len(dataset_train))
-    print(len(dataset_train.list_data))
-    print(dataset_train.list_data[0])
-    print(len(dataset_train.list_data[1]))
-
-    print(len(dataset_val))
-    print(len(dataset_val.list_data))
-    print(dataset_val.list_data[0])
-    print(len(dataset_val.list_data[1]))
-
-    dataset_train.list_data = [
-    {'feat_static_cat': [0],
-     'start': dataset_train.list_data[0]['start'],
-     'target' : np.stack([ts['target'] for ts in dataset_train.list_data])
-     }                 
-    ]
-
-    dataset_val.list_data = [
-        {'feat_static_cat': [0],
-        'start': dataset_val.list_data[0]['start'],
-        'target' : np.stack([ts['target'] for ts in dataset_val.list_data])
-        }                 
-    ]
+        import copy
+        split_offset=int(dataset_train.list_data[0]['target'].shape[1]*train_pct)
+        dataset_val = copy.deepcopy(dataset_train)
+        dataset_train.list_data[0]['target'] = dataset_train.list_data[0]['target'][:, :split_offset]
 
 
-    print(dataset_train.list_data[0]['target'].shape)
-    print(dataset_val.list_data[0]['target'].shape)
-    print(dataset_test.list_data[0]['target'].shape)
+    # print(len(dataset_train))
+    # print(len(dataset_train.list_data))
+    # print(dataset_train.list_data[0])
+    # print(len(dataset_train.list_data[1]))
+
+    # print(len(dataset_val))
+    # print(len(dataset_val.list_data))
+    # print(dataset_val.list_data[0])
+    # print(len(dataset_val.list_data[1]))
+
+
+
+    print('metadata: ', dataset.metadata)
+    print('dataset_train shape ', dataset_train.list_data[0]['target'].shape)
+    print('dataset_val shape ', dataset_val.list_data[0]['target'].shape)
+    print('dataset_test shape ', dataset_test.list_data[0]['target'].shape)
 
     if validation_set:
         return dataset, dataset_train, dataset_val, dataset_test, split_offset
@@ -155,3 +142,64 @@ data = generate_data(dataset_train.list_data[0]['target'].T,
 data = list(data)
 
 '''
+
+
+
+
+def load_dataset_old(name='traffic_nips', validation_set=True, train_pct=0.7):
+
+    dataset = get_dataset(name, regenerate=False)
+    print(dataset.train.__dict__)
+    print(dataset.test.__dict__)
+
+    train_grouper = MultivariateGrouper(max_target_dim=int(dataset.metadata.feat_static_cat[0].cardinality))
+    test_grouper = MultivariateGrouper(num_test_dates=int(len(dataset.test)/len(dataset.train)), 
+                                   max_target_dim=int(dataset.metadata.feat_static_cat[0].cardinality))
+
+    if validation_set:
+        split_offset=int(next(iter(dataset.train))['target'].shape[0]*train_pct)
+        prediction_length=next(iter(dataset.train))['target'].shape[0]
+        print('split_offset, prediction_length, difference, dataset shape ', split_offset, prediction_length, prediction_length-split_offset, next(iter(dataset.train))['target'].shape)
+        splitter = OffsetSplitter(split_offset=split_offset, prediction_length=prediction_length-split_offset)
+        dataset_train, dataset_val = splitter.split(dataset.train)
+
+        dataset_train = ListDataset(dataset_train[1], freq=dataset.metadata.freq, one_dim_target=False) # listDataset
+        dataset_val = ListDataset(dataset_val[1], freq=dataset.metadata.freq, one_dim_target=False) # listDataset
+
+    else:   
+        dataset_train = train_grouper(dataset.train)
+
+    dataset_test = test_grouper(dataset.test)  # ListDataset  but with target 2 dimensional
+    print(len(dataset_train))
+    print(len(dataset_train.list_data))
+    print(dataset_train.list_data[0])
+    print(len(dataset_train.list_data[1]))
+
+    print(len(dataset_val))
+    print(len(dataset_val.list_data))
+    print(dataset_val.list_data[0])
+    print(len(dataset_val.list_data[1]))
+
+    dataset_train.list_data = [
+    {'feat_static_cat': [0],
+     'start': dataset_train.list_data[0]['start'],
+     'target' : np.stack([ts['target'] for ts in dataset_train.list_data])
+     }                 
+    ]
+
+    dataset_val.list_data = [
+        {'feat_static_cat': [0],
+        'start': dataset_val.list_data[0]['start'],
+        'target' : np.stack([ts['target'] for ts in dataset_val.list_data])
+        }                 
+    ]
+
+
+    print(dataset_train.list_data[0]['target'].shape)
+    print(dataset_val.list_data[0]['target'].shape)
+    print(dataset_test.list_data[0]['target'].shape)
+
+    if validation_set:
+        return dataset, dataset_train, dataset_val, dataset_test, split_offset
+    else: 
+        return dataset, dataset_train, dataset_test

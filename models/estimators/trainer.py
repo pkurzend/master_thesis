@@ -3,6 +3,7 @@ from typing import List, Optional, Union, NamedTuple
 import pts
 from tqdm import tqdm
 import wandb
+import os
 
 import numpy as np
 import torch
@@ -13,10 +14,15 @@ from torch.utils.data import DataLoader
 
 from gluonts.core.component import validated
 from pts import Trainer
+import uuid
+# print uuid.uuid4()
 
 from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock, MyDataParallel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# TODO:
+# if loss goes up or to nan, reduce learning rate and try again
 
 class Trainer(Trainer):
     @validated()
@@ -77,6 +83,9 @@ class Trainer(Trainer):
         net = MyDataParallel(net)
 
         best_loss = np.inf
+        best_model_file_name = 'models/' + str(uuid.uuid4())+'best-model.pt'
+
+        nan_loss = False
 
         # store losses
         train_losses = []
@@ -103,20 +112,20 @@ class Trainer(Trainer):
                     optimizer.zero_grad()
 
 
-                    if self.first_train_batch:
-                        self.first_train_batch = False
-                        for name, t in data_entry.items():
-                          print('train ', name, t.shape)                    
+                    # if self.first_train_batch:
+                    #     self.first_train_batch = False
+                    #     for name, t in data_entry.items():
+                    #       print('train ', name, t.shape)                    
 
                     # validation_loss
                     if validation_iter is not None:
                         with torch.no_grad():
                             val_data_entry = next(iter(validation_iter))
                             # print(val_data_entry)
-                            if self.first_val_batch:
-                                self.first_val_batch = False
-                                for name, t in val_data_entry.items():
-                                  print('val ', name, t.shape)
+                            # if self.first_val_batch:
+                            #     self.first_val_batch = False
+                            #     for name, t in val_data_entry.items():
+                            #       print('val ', name, t.shape)
 
                             inputs_val = [v.to(self.device) for v in val_data_entry.values()]
 
@@ -127,16 +136,16 @@ class Trainer(Trainer):
                                 loss_val = output_val[0]
                             else:
                                 loss_val = output_val
-                            print('loss val ', loss_val)
+                            # print('loss val ', loss_val)
                             if loss_val.shape[0] > 1:
                                 loss_val = loss_val.mean()
-                            print('loss val mean ', loss_val)
+                            # print('loss val mean ', loss_val)
                             avg_epoch_loss_val += loss_val.item()
 
 
                     inputs = [v.to(self.device) for v in data_entry.values()]
                     
-                    
+                    # if not np.isfinite(ndarray.sum(loss).asscalar()):
   
                     output = net(*inputs)
                     if isinstance(output, (list, tuple)):
@@ -147,6 +156,12 @@ class Trainer(Trainer):
                     if loss.shape[0] > 1:
                         loss = loss.mean()
                     avg_epoch_loss += loss.item()
+
+
+                    if (torch.isnan(loss).any()) or (torch.isnan(loss_val).any()):
+                        nan_loss = True
+                        break
+
                     if validation_iter is not None:
                         post_fix_dict = {
                                 "avg_epoch_loss": avg_epoch_loss / batch_no,
@@ -169,6 +184,8 @@ class Trainer(Trainer):
 
 
 
+
+
                     loss.backward()
                     if self.clip_gradient is not None:
                         nn.utils.clip_grad_norm_(net.parameters(), self.clip_gradient)
@@ -182,11 +199,11 @@ class Trainer(Trainer):
                 # save best model:
                 if validation_iter is not None:
                     if avg_epoch_loss_val / self.num_batches_per_epoch < best_loss:
-                        torch.save(net.state_dict(), 'best-model-parameters.pt')
+                        torch.save(net.state_dict(), best_model_file_name)
                         best_loss = avg_epoch_loss_val / self.num_batches_per_epoch
                 else:
                     if avg_epoch_loss / self.num_batches_per_epoch < best_loss:
-                        torch.save(net.state_dict(), 'best-model-parameters.pt')
+                        torch.save(net.state_dict(), best_model_file_name)
                         best_loss = avg_epoch_loss / self.num_batches_per_epoch
 
             # mark epoch end time and log time cost of current epoch
@@ -197,10 +214,15 @@ class Trainer(Trainer):
             train_epoch_losses.append(avg_epoch_loss / self.num_batches_per_epoch)
             val_epoch_losses.append(avg_epoch_loss_val / self.num_batches_per_epoch)
 
+            if nan_loss: 
+                break
+
         # restore best model
+        net.load_state_dict(torch.load(best_model_file_name))
         
-        net.load_state_dict(torch.load('best-model-parameters.pt'))
+        os.remove(best_model_file_name)
         net = net.unParallelize()
+        
 
         return train_losses, train_epoch_losses, val_losses, val_epoch_losses
         # writer.close()

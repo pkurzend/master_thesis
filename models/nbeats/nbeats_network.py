@@ -490,18 +490,18 @@ class NBEATSTrainingNetwork(nn.Module):
         # print('forecast (shape, min, max, mean): ', forecast.shape, forecast.min().item(), forecast.max().item(), forecast.mean().item())
 
 
-        if self.firstBatchIndicator:
-            # pints here
-            print('past_target ', past_target.shape)
-            print('future_target ', future_target.shape)
-            print('past_is_pad ', past_is_pad.shape)
-            print('past_time_feat ', past_time_feat.shape)
-            print('future_time_feat ', future_time_feat.shape)
-            print('past_observed_values ', past_observed_values.shape)
-            print('future_observed_values ', future_observed_values.shape)
-            print('target_dimension_indicator ', target_dimension_indicator.shape)
+        # if self.firstBatchIndicator:
+        #     # pints here
+        #     print('past_target ', past_target.shape)
+        #     print('future_target ', future_target.shape)
+        #     print('past_is_pad ', past_is_pad.shape)
+        #     print('past_time_feat ', past_time_feat.shape)
+        #     print('future_time_feat ', future_time_feat.shape)
+        #     print('past_observed_values ', past_observed_values.shape)
+        #     print('future_observed_values ', future_observed_values.shape)
+        #     print('target_dimension_indicator ', target_dimension_indicator.shape)
 
-            self.firstBatchIndicator = False
+        #     self.firstBatchIndicator = False
 
 
         future_target = future_target / scale

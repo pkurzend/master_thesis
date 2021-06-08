@@ -1,11 +1,15 @@
 
+import sys
+import os
+sys.path.append('../../')
+
 
 from models.nbeats import NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock
 from models.estimators.nbeats_estimator import NBEATSEstimator
 from dataset.loader import load_dataset, generate_data, plot_data
 import sys 
 
-from ...models.estimators.trainer import Trainer
+from models.estimators.trainer import Trainer
 
 
 from gluonts.dataset.multivariate_grouper import MultivariateGrouper
@@ -46,52 +50,80 @@ for f in folders:
 
 # get hyperparameters from sys args
 hp_names = [
-    ('stack_features_along_time', int),
+    ('dataset_name', str),
+    ('learning_rate', float),
+    ('max_learning_rate', float),
+    ('batch_size', int),
     ('loss_function', str),
+
+    ('interpretable', int),
+    ('stack_features_along_time', int),
     ('block', int),
+    
+    
     ('stacks', int),
     ('linear_layers', int),
     ('layer_size', int),
-    ('interpretable', int),
+    
     ('attention_layers', int),
-    ('attention_embedding_size', int),
     ('attention_heads', int),
-    ('learning_rate', float),
-    ('batch_size', int),
-    ('trend_layer_size', int),
-    ('seasonality_layer_size', int),
-    ('degree_of_polynomial', int),
-    ('dataset_name', str),
-]
-hp_dict = {   hp_names[0] : hp_names[1](sys.argv[i+1]) for i in range(len(hp_names))    }
- 
-stack_features_along_time = hp_dict['stack_features_along_time'] # 0 or 1
-loss_function = hp_dict['loss_function']
-stacks = hp_dict['stacks']
-linear_layers = hp_dict['linear_layers']
-layer_size = hp_dict['layer_size']
-interpretable = hp_dict['interpretable'] # 0 or 1
-attention_layers = hp_dict['attention_layers']
-attention_embedding_size = hp_dict['attention_embedding_size']
-attention_heads = hp_dict['attention_heads']
-learning_rate = hp_dict['learning_rate']
-batch_size = hp_dict['batch_size']
-trend_layer_size = hp_dict['trend_layer_size']
-seasonality_layer_size = hp_dict['seasonality_layer_size']
-degree_of_polynomial = hp_dict['degree_of_polynomial']
-dataset_name = hp_dict['dataset_name']
+    ('attention_embedding_size', int),
 
+    
+    
+    # ('trend_layer_size', int),
+    # ('seasonality_layer_size', int),
+    # ('degree_of_polynomial', int),
+]
+
+
+hp_dict = {   hp_name : hp_type(sys.argv[i+1]) for i, (hp_name, hp_type) in enumerate(hp_names)   }
+
+dataset_name = hp_dict['dataset_name']
+learning_rate = hp_dict['learning_rate']
+max_learning_rate = hp_dict['max_learning_rate']
+batch_size = hp_dict['batch_size']
+loss_function = hp_dict['loss_function']
+ 
+
+interpretable = hp_dict['interpretable'] # 0 or 1
+stack_features_along_time = hp_dict['stack_features_along_time'] # 0 or 1
 block_types = [NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock]
 block = block_types[hp_dict['block']] 
 
+stacks = hp_dict['stacks']
+linear_layers = hp_dict['linear_layers']
+layer_size = hp_dict['layer_size']
 
+attention_layers = hp_dict['attention_layers']
+attention_heads = hp_dict['attention_heads']
+attention_embedding_size = hp_dict['attention_embedding_size']
+
+
+# trend_layer_size = hp_dict['trend_layer_size']
+# seasonality_layer_size = hp_dict['seasonality_layer_size']
+# degree_of_polynomial = hp_dict['degree_of_polynomial']
+
+
+print('hyperparameter dict: ')
+print(hp_dict)
+
+print('DATASET NAME: ', dataset_name)
+print('BLOCK TYPE: ', block)
+
+start = '''
+############################################################
+###################### START TRAINING ######################
+############################################################
+# '''
+print(start)
 
 
 
 dataset, dataset_train, dataset_val, dataset_test, split_offset = load_dataset(name=dataset_name, train_pct=0.7)
 
 evaluator = MultivariateEvaluator(quantiles=(np.arange(20)/20.0)[1:],
-                                  target_agg_funcs={'sum': np.sum})
+                                target_agg_funcs={'sum': np.sum})
 
 target_dim=int(dataset.metadata.feat_static_cat[0].cardinality)
 prediction_length = dataset.metadata.prediction_length
@@ -114,18 +146,18 @@ estimator = NBEATSEstimator(
     attention_layers=attention_layers,
     attention_embedding_size=attention_embedding_size,
     attention_heads=attention_heads,
-    interpretable=interpretable,
+    interpretable=False,
     # use_time_features=True,
-    degree_of_polynomial  = degree_of_polynomial,
-    trend_layer_size = trend_layer_size,
-    seasonality_layer_size = seasonality_layer_size,
-    num_of_harmonics  = 1,
+    # degree_of_polynomial  = degree_of_polynomial,
+    # trend_layer_size = trend_layer_size,
+    # seasonality_layer_size = seasonality_layer_size,
+    # num_of_harmonics  = 1,
 
     trainer=Trainer(device=device,
-                    epochs=20,
+                    epochs=2,
                     learning_rate=learning_rate,
-                    maximum_learning_rate=1e-3,
-                    num_batches_per_epoch=100,
+                    maximum_learning_rate=max_learning_rate,
+                    num_batches_per_epoch=5,
                     batch_size=batch_size,
                     clip_gradient=1.0
                     )
@@ -142,15 +174,15 @@ for train_loss, val_loss in zip(train_losses, val_losses):
 
 
 forecast_it, ts_it = make_evaluation_predictions(dataset=dataset_test,
-                                             predictor=predictor,
-                                             num_samples=1)
+                                            predictor=predictor,
+                                            num_samples=1)
 
 
 forecasts = list(forecast_it)
 targets = list(ts_it)
 
-print(len(forecasts))
-print(len(targets))
+# print(len(forecasts))
+# print(len(targets))
 
 
 agg_metric, _ = evaluator(targets, forecasts, num_series=len(dataset_test))
@@ -167,8 +199,19 @@ mape_sum = agg_metric['m_sum_MAPE']
 smape_sum = agg_metric['m_sum_sMAPE']
 
 
+print("mse: {}".format(mse))
+print("mase: {}".format(mase))
+print("mape: {}".format(mape))
+print("smape: {}".format(smape))
+print("mse_sum: {}".format(mse_sum))
+print("mase_sum: {}".format(mase_sum))
+print("mape_sum: {}".format(mape_sum))
+print("smape_sum: {}".format(smape_sum))
+
+
+
 result_obj = {
-    'metrcs' : {
+    'metrics' : {
         'mse' : mse,
         'mase' : mase,
         'mape' : mape,
@@ -180,10 +223,11 @@ result_obj = {
     },
     'losses' : estimator.history,
     'hyperparameters' : hp_dict,
+    'dataset_name' : dataset_name,
 }
 
 
-modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items()])
+modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items() if param not in ['stack_features_along_time', 'attention_embedding_size', 'attention_heads', 'attention_layers']])
 
 import pickle 
 filename = F"gridresults/{modelpath}.pkl"
@@ -192,12 +236,3 @@ with open(filename, 'wb') as f:
 
 
 
-print("CRPS: {}".format(agg_metric['mean_wQuantileLoss']))
-print("ND: {}".format(agg_metric['ND']))
-print("NRMSE: {}".format(agg_metric['NRMSE']))
-print("MSE: {}".format(agg_metric['MSE']))
-
-print("CRPS-Sum: {}".format(agg_metric['m_sum_mean_wQuantileLoss']))
-print("ND-Sum: {}".format(agg_metric['m_sum_ND']))
-print("NRMSE-Sum: {}".format(agg_metric['m_sum_NRMSE']))
-print("MSE-Sum: {}".format(agg_metric['m_sum_MSE']))

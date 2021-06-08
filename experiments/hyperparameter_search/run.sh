@@ -2,7 +2,7 @@
 #SBATCH --job-name=nbeats
 #SBATCH --output=logs/test%j.log
 #SBATCH --error=errs/test%j.err
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=kurzendo@uni-hildesheim.de
 
 # ## FOR GPU USE:
@@ -22,9 +22,9 @@ done
 export PATH
 export LD_LIBRARY_PATH
 
-cd ~/thesis/master_thesis
+# cd ~/thesis/master_thesis
 
 source activate thesis
 
 ## Run the script
-srun python main.py $1 $2 $3 $4 $5 $6 $7 $8 $9 $10 $11 $12 $13 $14 $15 $16 $17
+srun python main.py $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}

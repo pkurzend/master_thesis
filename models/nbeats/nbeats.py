@@ -58,13 +58,13 @@ class NBeats(torch.nn.Module):
 
 
 
-        if self.first_batch:
-          print('x_ts ', x_ts.shape)
-          print('x_tf ', x_tf.shape)
-          print('x_s ', x_s.shape)
-          print('x ', x.shape)
-          print('pad_mask ', pad_mask.shape)
-          self.first_batch = False
+        # if self.first_batch:
+        #   print('x_ts ', x_ts.shape)
+        #   print('x_tf ', x_tf.shape)
+        #   print('x_s ', x_s.shape)
+        #   print('x ', x.shape)
+        #   print('pad_mask ', pad_mask.shape)
+        #   self.first_batch = False
 
         x = x.transpose(1, 2) # shape: (N, E, S)
 

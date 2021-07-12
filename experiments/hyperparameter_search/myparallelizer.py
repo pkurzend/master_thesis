@@ -36,6 +36,8 @@ attention_embedding_sizes = [512]
 # don't forget to set partition=TEST in template.sh
 testing = True
 if testing:
+	dataset_names = ['solar_nips'] # dimensions. [28, 1484, 3856, 552, 2434]
+
 	lrs = [1e-5]
 	max_lrs = [1e-3]
 	batch_sizes = [32]
@@ -51,13 +53,47 @@ if testing:
 	linear_layers = [2]
 	layer_sizes = [512]
 	
-	attention_layers = [2]
+	attention_layers = [1]
 	attention_heads = [4]
 	attention_embedding_sizes = [512]
 	
 	# trend_layer_sizes = [512]
 	# seasonality_layer_sizes = [2048]
 	# degree_of_polynomials = [3]
+
+
+
+
+
+
+testing = True
+if testing:
+	dataset_names = ['solar_nips'] # dimensions. [28, 1484, 3856, 552, 2434]
+
+	lrs = [1e-5]
+	max_lrs = [1e-3]
+	batch_sizes = [32]
+	loss_functions = ['MAPE']
+	
+
+	interpretable = [0]
+	stack_features_along_time = [0]
+	blocks = [1]
+	
+	
+	stacks = [15]
+	linear_layers = [2]
+	layer_sizes = [512]
+	
+	attention_layers = [1]
+	attention_heads = [4]
+	attention_embedding_sizes = [512]
+	
+	# trend_layer_sizes = [512]
+	# seasonality_layer_sizes = [2048]
+	# degree_of_polynomials = [3]
+
+
 
 
 

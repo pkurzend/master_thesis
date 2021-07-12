@@ -1,4 +1,6 @@
 *.log
 *.err
 *.pt
+*.png
+*.pkl
 *__pycache__/

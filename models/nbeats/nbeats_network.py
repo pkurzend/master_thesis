@@ -504,7 +504,7 @@ class NBEATSTrainingNetwork(nn.Module):
         #     self.firstBatchIndicator = False
 
 
-        future_target = future_target / scale
+        # future_target = future_target / scale
 
 
         # apply loss function

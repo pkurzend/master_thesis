@@ -30,6 +30,8 @@ import numpy as np
 import os 
 from subprocess import call
 
+import matplotlib.pyplot as plt
+
 
 print('__Number CUDA Devices:', torch.cuda.device_count())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,8 +41,10 @@ for i in range(torch.cuda.device_count()):
     print(torch.cuda.get_device_name(i))
 
 
+plots_folder = 'plots'
+
 # creates folders
-folders = ['gridresults', 'errs', 'logs']
+folders = ['gridresults', 'errs', 'logs', plots_folder]
 for f in folders:
     try:
         os.makedirs(f)
@@ -130,6 +134,48 @@ prediction_length = dataset.metadata.prediction_length
 context_length = prediction_length * 5
 freq = dataset.metadata.freq
 
+modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items() if param not in ['stack_features_along_time', 'attention_embedding_size', 'attention_heads', 'attention_layers']])
+
+
+
+
+def plot1(targets, forecasts, modelpath):
+    ts_entry = targets[0]  #<-this line is needed
+    forecast_entry = forecasts[0]  #<-this line is needed
+
+
+    fig, axes = plt.subplots(10, 4, figsize=(20,30))
+
+    axes = [ax for row in axes for ax in row]
+
+    prediction_length = dataset.metadata.prediction_length
+    target_dim = int(dataset.metadata.feat_static_cat[0].cardinality)
+
+    for j in range(min(target_dim, 20)):
+        # ts_entry[i][-120:].plot()
+        # forecast_entry.copy_dim(i).plot(color='g')
+        # print(ts_entry[j][-120:])
+        # print(ts_entry[j][-120:].shape)
+        # print(forecast_entry.copy_dim(j).samples[0])
+        # print(forecast_entry.copy_dim(j).samples[0].shape)
+
+        ground_truth_x = np.arange(120)
+        model_x = np.arange(120-prediction_length, 120)
+
+        l1, = axes[j].plot(ground_truth_x, ts_entry[j][-120:])
+        l2, = axes[j].plot(model_x, forecast_entry.copy_dim(j).samples[0], color='g')
+    plt.savefig(F'{plots_folder}/{modelpath}_1.png')
+
+def plot2(targets, forecasts, modelpath):
+    ts_entry = targets[0]  #<-this line is needed
+    forecast_entry = forecasts[0]  #<-this line is needed
+    for i in range(4):
+        plt.subplot(2,2,i+1)
+        ts_entry[i][-120:].plot()
+        forecast_entry.copy_dim(i).plot(color='g')
+    plt.savefig(F'{plots_folder}/{modelpath}_2.png')
+
+
 # TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock, MultivariateNBeatsBlock, NBeatsBlock
 estimator = NBEATSEstimator(
     target_dim=target_dim,
@@ -154,12 +200,12 @@ estimator = NBEATSEstimator(
     # num_of_harmonics  = 1,
 
     trainer=Trainer(device=device,
-                    epochs=2,
+                    epochs=40,
                     learning_rate=learning_rate,
                     maximum_learning_rate=max_learning_rate,
-                    num_batches_per_epoch=5,
+                    num_batches_per_epoch=100,
                     batch_size=batch_size,
-                    clip_gradient=1.0
+                    clip_gradient=3.0
                     )
 )
 
@@ -181,8 +227,8 @@ forecast_it, ts_it = make_evaluation_predictions(dataset=dataset_test,
 forecasts = list(forecast_it)
 targets = list(ts_it)
 
-# print(len(forecasts))
-# print(len(targets))
+plot1(targets, forecasts, modelpath)
+plot2(targets, forecasts, modelpath)
 
 
 agg_metric, _ = evaluator(targets, forecasts, num_series=len(dataset_test))
@@ -227,7 +273,6 @@ result_obj = {
 }
 
 
-modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items() if param not in ['stack_features_along_time', 'attention_embedding_size', 'attention_heads', 'attention_layers']])
 
 import pickle 
 filename = F"gridresults/{modelpath}.pkl"

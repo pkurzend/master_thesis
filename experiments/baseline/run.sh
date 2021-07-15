@@ -8,7 +8,7 @@
 # ## FOR GPU USE:
 #SBATCH --partition=STUD
 ##SBATCH --gres=gpu:1
-##SBATCH--gpus=4
+##SBATCH--gpus=1
 
 
 

@@ -24,18 +24,6 @@ class NBeats(torch.nn.Module):
         self.first_batch = True
 
 
-        # implement model parallelism like in 
-        # https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
-        # https://www.run.ai/guides/multi-gpu/pytorch-multi-gpu-4-techniques-explained/
-        
-        self.n_gpus = torch.cuda.device_count()
-
-        print('__Number CUDA Devices:', torch.cuda.device_count())
-        for i in range(torch.cuda.device_count()):
-            print(torch.cuda.get_device_name(i))
-
-        if self.n_gpus == 0:    
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 

@@ -152,7 +152,7 @@ class NBEATSEstimator(PyTorchEstimator):
         use_feat_dynamic_real: bool = False,
         stack_features_along_time : bool = False, # if False, data has shape (bacht_size, context_length, input_dim) where input_dim = target_dim + n_lags*target_dim + embedding_dim*target_dim + n_time_features
         compute_input_dim : bool = True,
-        n_gpus : int = 1,
+ 
 
         split_offset : int = 0,
         pick_incomplete: bool = False,
@@ -181,7 +181,7 @@ class NBEATSEstimator(PyTorchEstimator):
         self.num_of_harmonics=num_of_harmonics 
 
 
-        self.n_gpus = n_gpus
+   
 
         self.freq = freq
 
@@ -380,7 +380,7 @@ class NBEATSEstimator(PyTorchEstimator):
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
             num_of_harmonics=self.num_of_harmonics,
-            n_gpus=self.n_gpus
+          
         ).to(device)
             
 

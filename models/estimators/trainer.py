@@ -2,7 +2,7 @@ import time
 from typing import List, Optional, Union, NamedTuple
 import pts
 from tqdm import tqdm
-import wandb
+
 import os
 
 import numpy as np
@@ -17,12 +17,33 @@ from pts import Trainer
 import uuid
 # print uuid.uuid4()
 
-from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock, MyDataParallel
+from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # TODO:
 # if loss goes up or to nan, reduce learning rate and try again
+
+
+
+# implement model parallelism like in 
+# https://glassboxmedicine.com/2020/03/04/multi-gpu-training-in-pytorch-data-and-model-parallelism/
+# https://www.run.ai/guides/multi-gpu/pytorch-multi-gpu-4-techniques-explained/
+        
+class MyDataParallel(torch.nn.DataParallel):
+    """
+    Allow nn.DataParallel to call model's attributes.
+    """
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
+
+    def unParallelize(self):
+        return self.module 
+
+
 
 class Trainer(Trainer):
     @validated()
@@ -34,7 +55,6 @@ class Trainer(Trainer):
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-6,
         maximum_learning_rate: float = 1e-5,
-        wandb_mode: str = "disabled",
         restore_best: bool = True,
         clip_gradient: Optional[float] = None,
         device: Optional[Union[torch.device, str]] = None,
@@ -52,7 +72,7 @@ class Trainer(Trainer):
         self.clip_gradient = clip_gradient
         self.device = device
         self.restore_best = restore_best
-        wandb.init(mode=wandb_mode, **kwargs)
+
 
     def __call__(
         self,
@@ -60,7 +80,7 @@ class Trainer(Trainer):
         train_iter: DataLoader,
         validation_iter: Optional[DataLoader] = None,
     ) -> None:
-        wandb.watch(net, log="all", log_freq=self.num_batches_per_epoch)
+        
 
         print('calling new trainer################################')
 
@@ -80,7 +100,8 @@ class Trainer(Trainer):
 
 
         # make model use several gpus
-        # net = MyDataParallel(net)
+        if torch.cuda.device_count() > 1:
+            net = MyDataParallel(net)
 
         best_loss = np.inf
 
@@ -162,9 +183,10 @@ class Trainer(Trainer):
                         loss = loss.mean()
                     avg_epoch_loss += loss.item()
 
-                    halt_cond =  (torch.isnan(loss).any()) or (torch.isnan(loss_val).any()) if validation_iter is not None else torch.isnan(loss).any()
-                    if halt_cond:
+                    nan_halt_cond =  (torch.isnan(loss).any()) or (torch.isnan(loss_val).any()) if validation_iter is not None else torch.isnan(loss).any()
+                    if nan_halt_cond:
                         nan_loss = True
+                        print('NAN LOSS OCCURED, ABORT TRAINING')
                         break
 
                     if validation_iter is not None:
@@ -173,7 +195,7 @@ class Trainer(Trainer):
                                 "avg_epoch_loss_val": avg_epoch_loss_val / batch_no,
                                 "epoch": epoch_no,
                         }
-                        wandb.log({"loss_val": loss_val.item()})
+                      
 
                         val_losses.append(avg_epoch_loss_val / batch_no)
 
@@ -182,7 +204,7 @@ class Trainer(Trainer):
                                 "avg_epoch_loss": avg_epoch_loss / batch_no,
                                 "epoch": epoch_no,
                         }
-                    wandb.log({"loss": loss.item()})
+                    
                     it.set_postfix(ordered_dict=post_fix_dict, refresh=False)
 
                     train_losses.append(avg_epoch_loss / batch_no)
@@ -223,11 +245,16 @@ class Trainer(Trainer):
             if nan_loss: 
                 break
 
+
+        if torch.cuda.device_count() > 1:
+            net = net.unParallelize()
+
         # restore best model
         net.load_state_dict(torch.load(best_model_file_name))
         
         os.remove(best_model_file_name)
-        # net = net.unParallelize()
+
+
         
 
         return train_losses, train_epoch_losses, val_losses, val_epoch_losses

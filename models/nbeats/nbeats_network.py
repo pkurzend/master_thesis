@@ -20,18 +20,6 @@ from .blocks import NBeatsBlock
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class MyDataParallel(torch.nn.DataParallel):
-    """
-    Allow nn.DataParallel to call model's attributes.
-    """
-    def __getattr__(self, name):
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            return getattr(self.module, name)
-
-    def unParallelize(self):
-        return self.module 
 
 
 
@@ -59,7 +47,7 @@ class NBEATSTrainingNetwork(nn.Module):
                   attention_embedding_size : int=512, 
                   attention_heads : int = 1,
 
-                  n_gpus=1,
+                 
                  
                   # parameters for interpretable verions
                   interpretable : bool = False,
@@ -88,7 +76,7 @@ class NBEATSTrainingNetwork(nn.Module):
         self.seasonality_layer_size=seasonality_layer_size 
         self.num_of_harmonics=num_of_harmonics 
 
-        self.n_gpus=n_gpus
+        
 
 
         self.periodicity = get_seasonality(self.freq)
@@ -133,8 +121,7 @@ class NBEATSTrainingNetwork(nn.Module):
                                            num_of_harmonics=num_of_harmonics
                                            )
 
-        # if self.n_gpus>1:
-        #     self.nb_model = MyDataParallel(self.nb_model, device_ids = list(range(self.n_gpus)))
+
 
 
     @staticmethod

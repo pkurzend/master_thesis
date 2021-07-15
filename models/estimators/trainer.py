@@ -246,15 +246,16 @@ class Trainer(Trainer):
                 break
 
 
-        if torch.cuda.device_count() > 1:
-            net = net.unParallelize()
+
 
         # restore best model
         net.load_state_dict(torch.load(best_model_file_name))
         
         os.remove(best_model_file_name)
 
-
+        # this must come after restoring best model otherwise parameter names in stat_dict do not match
+        if torch.cuda.device_count() > 1:
+            net = net.unParallelize()
         
 
         return train_losses, train_epoch_losses, val_losses, val_epoch_losses

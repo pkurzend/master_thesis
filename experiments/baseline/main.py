@@ -26,10 +26,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 for i in range(torch.cuda.device_count()):
     print(torch.cuda.get_device_name(i))
 
-plots_folder = 'plots3'
+plots_folder = 'plots_paper_params'
+gridsearch_result_folder = "gridresults_paper_params"
 
 # creates folders
-folders = ['gridresults', 'errs', 'logs', plots_folder]
+folders = [gridsearch_result_folder, 'errs', 'logs', plots_folder]
 for f in folders:
     try:
         os.makedirs(f)
@@ -66,7 +67,7 @@ else:
     from pts import Trainer
 
 
-modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items() if param not in ['stack_features_along_time', 'attention_embedding_size', 'attention_heads', 'attention_layers']])
+modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items() ])
 
 
 print('hyperparameter dict: ')
@@ -99,6 +100,7 @@ evaluator = MultivariateEvaluator(quantiles=(np.arange(20)/20.0)[1:],
 
 
 print('TARGET DIM: ', int(dataset.metadata.feat_static_cat[0].cardinality))
+
 
 def plot1(targets, forecasts, modelpath):
     ts_entry = targets[0]  #<-this line is needed
@@ -148,6 +150,33 @@ result_obj = {
 
 
 
+
+
+# using hyperparameters from the paper:
+# parameters that are left unclear: i use the default value in the code implementation
+# also, LSTM parameters are not specified, so i am using the default values
+
+# transformer params
+d_model = 32
+
+# general params
+conditioning_length = 200
+
+# parameters specified in the paper:
+dequantize = True if dataset_name == "taxi_30min" else False
+
+# transformer parameters
+num_heads = 8
+num_encoder_layers = 3
+num_decoder_layers = 3
+dropout_rate = 0.1
+
+# flow parameters
+n_blocks=5
+hidden_size=100
+n_hidden=2
+
+
 if model_type == 'GRU-Real-NVP':
     # GRU-Real-NVP
     print('GRU-Real-NVP')
@@ -158,10 +187,13 @@ if model_type == 'GRU-Real-NVP':
         input_size=input_size,
         freq=dataset.metadata.freq,
         scaling=True,
-        dequantize=True,
-        n_blocks=4,
+        dequantize=dequantize,
+        conditioning_length = conditioning_length,
+        n_blocks=n_blocks,
+        hidden_size=hidden_size,
+        n_hidden=n_hidden,
         trainer=Trainer(device=device,
-                        epochs=25,
+                        epochs=40,
                         learning_rate=1e-3,
                         maximum_learning_rate=1e-2,
                         num_batches_per_epoch=100,
@@ -179,32 +211,53 @@ elif model_type == 'GRU-MAF':
         input_size=input_size,
         freq=dataset.metadata.freq,
         scaling=True,
-        dequantize=True,
+        dequantize=dequantize,
+        conditioning_length = conditioning_length,
+        n_blocks=n_blocks,
+        hidden_size=hidden_size,
+        n_hidden=n_hidden,
         flow_type='MAF',
         trainer=Trainer(device=device,
-                        epochs=25,
+                        epochs=40,
                         learning_rate=1e-3,
                         maximum_learning_rate=1e-2,
                         num_batches_per_epoch=100,
                         batch_size=64)
     )
 
+
+
+
+
+
+
 elif model_type == 'Transformer-MAF':
     # Transformer-MAF
     print('Transformer-MAF')
+
+
+
+
     estimator = TransformerTempFlowEstimator(
-        d_model=16,
-        num_heads=4,
+        d_model=d_model,
+        num_heads=num_heads,
         input_size=input_size,
         target_dim=int(dataset.metadata.feat_static_cat[0].cardinality),
         prediction_length=dataset.metadata.prediction_length,
         context_length=dataset.metadata.prediction_length*4,
         flow_type='MAF',
-        dequantize=True,
+        dequantize=dequantize,
         freq=dataset.metadata.freq,
+        conditioning_length=conditioning_length,
+        num_encoder_layers=num_encoder_layers,
+        num_decoder_layers=num_decoder_layers,
+        dropout_rate=dropout_rate,
+        n_blocks=n_blocks,
+        hidden_size=hidden_size,
+        n_hidden=n_hidden,
         trainer=Trainer(
             device=device,
-            epochs=14,
+            epochs=40,
             learning_rate=1e-3,
             maximum_learning_rate=1e-2,
             num_batches_per_epoch=100,
@@ -269,7 +322,7 @@ result_obj['metrics'] = {
     }
 
 import pickle 
-filename = F"gridresults/{modelpath}.pkl"
+filename = F"{gridsearch_result_folder}/{modelpath}.pkl"
 with open(filename, 'wb') as f:
   pickle.dump(result_obj, f)
 

@@ -12,7 +12,7 @@ def count_parameters(model):
 
 
 
-def plot1(targets, forecasts, modelpath, prediction_length, target_dim, plots_folder):
+def plot1(targets, forecasts, modelpath=None, prediction_length=24, target_dim=20, plots_folder=None):
     ts_entry = targets[0]  #<-this line is needed
     forecast_entry = forecasts[0]  #<-this line is needed
 
@@ -36,13 +36,17 @@ def plot1(targets, forecasts, modelpath, prediction_length, target_dim, plots_fo
 
         l1, = axes[j].plot(ground_truth_x, ts_entry[j][-120:])
         l2, = axes[j].plot(model_x, np.median(np.array(forecast_entry.copy_dim(j).samples), axis=0), color='g')
+    if plots_folder is None or modelpath is None:
+        return
     plt.savefig(F'{plots_folder}/{modelpath}_1.png')
 
-def plot2(targets, forecasts, modelpath, prediction_length, target_dim, plots_folder):
+def plot2(targets, forecasts, modelpath=None, prediction_length=24, target_dim=20, plots_folder=None):
     ts_entry = targets[0]  #<-this line is needed
     forecast_entry = forecasts[0]  #<-this line is needed
     for i in range(4):
         plt.subplot(2,2,i+1)
         ts_entry[i][-120:].plot()
         forecast_entry.copy_dim(i).plot(color='g')
+    if plots_folder is None or modelpath is None:
+        return
     plt.savefig(F'{plots_folder}/{modelpath}_2.png')

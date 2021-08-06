@@ -65,6 +65,7 @@ if own_trainer == 1:
     from models.estimators.trainer import Trainer
 else:
     from pts import Trainer
+    # from models.estimators.trainer import Trainer_pts as Trainer
 
 
 modelpath = '&'.join([F"{param}={value}" for param, value in hp_dict.items() ])
@@ -157,25 +158,41 @@ result_obj = {
 # also, LSTM parameters are not specified, so i am using the default values
 
 # transformer params
-d_model = 32
+d_model = 32 #if dataset_name != "solar_nips" else 16
 
 # general params
 conditioning_length = 200
 
 # parameters specified in the paper:
-dequantize = True if dataset_name == "taxi_30min" else False
-
+# dequantize = True if (dataset_name == "taxi_30min") or (dataset_name == "solar_nips")  else False
+dequantize = True if dataset_name == "taxi_30min"  else False
+scaling = True
 # transformer parameters
-num_heads = 8
+num_heads = 8 if dataset_name != "solar_nips" else 4
 num_encoder_layers = 3
 num_decoder_layers = 3
 dropout_rate = 0.1
 
 # flow parameters
-n_blocks=5
+n_blocks=5 if dataset_name != "solar_nips" else 4
 hidden_size=100
 n_hidden=2
 
+epochs = 45 #if dataset_name != "solar_nips" else 20
+
+
+print('hyperparameters: ')
+print(
+    f"""
+    d_model : {d_model}
+    dequantize : {dequantize}
+    num_heads : {num_heads}
+    n_blocks : {n_blocks}
+    hidden_size : {hidden_size}
+    n_hidden : {n_hidden}
+    d_model : {d_model}
+    """
+ )
 
 if model_type == 'GRU-Real-NVP':
     # GRU-Real-NVP
@@ -186,14 +203,14 @@ if model_type == 'GRU-Real-NVP':
         cell_type='GRU',
         input_size=input_size,
         freq=dataset.metadata.freq,
-        scaling=True,
+        scaling=scaling,
         dequantize=dequantize,
         conditioning_length = conditioning_length,
         n_blocks=n_blocks,
         hidden_size=hidden_size,
         n_hidden=n_hidden,
         trainer=Trainer(device=device,
-                        epochs=40,
+                        epochs=epochs,
                         learning_rate=1e-3,
                         maximum_learning_rate=1e-2,
                         num_batches_per_epoch=100,
@@ -210,7 +227,7 @@ elif model_type == 'GRU-MAF':
         cell_type='GRU',
         input_size=input_size,
         freq=dataset.metadata.freq,
-        scaling=True,
+        scaling=scaling,
         dequantize=dequantize,
         conditioning_length = conditioning_length,
         n_blocks=n_blocks,
@@ -218,7 +235,7 @@ elif model_type == 'GRU-MAF':
         n_hidden=n_hidden,
         flow_type='MAF',
         trainer=Trainer(device=device,
-                        epochs=40,
+                        epochs=epochs,
                         learning_rate=1e-3,
                         maximum_learning_rate=1e-2,
                         num_batches_per_epoch=100,
@@ -247,6 +264,7 @@ elif model_type == 'Transformer-MAF':
         context_length=dataset.metadata.prediction_length*4,
         flow_type='MAF',
         dequantize=dequantize,
+        scaling=scaling,
         freq=dataset.metadata.freq,
         conditioning_length=conditioning_length,
         num_encoder_layers=num_encoder_layers,
@@ -257,7 +275,7 @@ elif model_type == 'Transformer-MAF':
         n_hidden=n_hidden,
         trainer=Trainer(
             device=device,
-            epochs=40,
+            epochs=epochs,
             learning_rate=1e-3,
             maximum_learning_rate=1e-2,
             num_batches_per_epoch=100,

@@ -40,7 +40,7 @@ from pts.feature import (
 )
 
 from .estimator_base import PyTorchEstimator 
-from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock
+from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBEATSFlowPredictionNetwork, NBEATSFlowTrainingNetwork, NBeatsBlock
 
 from .trainer import Trainer
 
@@ -138,9 +138,12 @@ class NBEATSEstimator(PyTorchEstimator):
         linear_layers: int=4, 
         layer_size: int=512, 
         block : nn.Module = NBeatsBlock,  
+
+        # attention parameters
         attention_layers : int=1, 
         attention_embedding_size : int=512, 
         attention_heads : int = 1,
+        positional_encoding : bool = True,
 
         # parameters for interpretable verions
         interpretable : bool = False,
@@ -153,6 +156,8 @@ class NBEATSEstimator(PyTorchEstimator):
         stack_features_along_time : bool = False, # if False, data has shape (bacht_size, context_length, input_dim) where input_dim = target_dim + n_lags*target_dim + embedding_dim*target_dim + n_time_features
         compute_input_dim : bool = True,
  
+        dequantize : bool = False,
+        flow_type : str = 'MAF',
 
         split_offset : int = 0,
         pick_incomplete: bool = False,
@@ -170,23 +175,26 @@ class NBEATSEstimator(PyTorchEstimator):
         self.stacks=stacks
         self.linear_layers=linear_layers
         self.layer_size=layer_size
+        
+        # attention parameters
         self.attention_layers=attention_layers
         self.attention_embedding_size=attention_embedding_size
         self.attention_heads=attention_heads
-
+        self.positional_encoding = positional_encoding
+        
+        # parameters for interpretable model, not used in generic model
         self.interpretable=interpretable
         self.degree_of_polynomial=degree_of_polynomial
         self.trend_layer_size=trend_layer_size
         self.seasonality_layer_size=seasonality_layer_size 
         self.num_of_harmonics=num_of_harmonics 
 
+        # flow parameters, only relevant when using flow (NBEATSEFlowstimator)
+        self.dequantize = dequantize
+        self.flow_type = flow_type
 
-   
 
         self.freq = freq
-
-
-        
         self.use_feat_dynamic_real = use_feat_dynamic_real
 
 
@@ -375,6 +383,7 @@ class NBEATSEstimator(PyTorchEstimator):
             attention_layers=self.attention_layers,
             attention_embedding_size=self.attention_embedding_size,
             attention_heads=self.attention_heads,
+
             interpretable=self.interpretable,
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
@@ -409,6 +418,7 @@ class NBEATSEstimator(PyTorchEstimator):
             attention_layers=self.attention_layers,
             attention_embedding_size=self.attention_embedding_size,
             attention_heads=self.attention_heads,
+
             interpretable=self.interpretable,
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
@@ -430,3 +440,98 @@ class NBEATSEstimator(PyTorchEstimator):
             device=device,
         )
 
+
+
+
+
+
+class NBEATSFlowEstimator(NBEATSEstimator):
+
+     
+    def create_training_network(self, device: torch.device) -> NBEATSFlowTrainingNetwork:
+        print('CREATING FLOW TRAINING NETWORK')
+        return NBEATSFlowTrainingNetwork(
+            loss_function=self.loss_function, 
+            input_dim=self.input_dim, 
+            target_dim=self.target_dim,
+            context_length=self.context_length, 
+            prediction_length=self.prediction_length,
+            stack_features_along_time=self.stack_features_along_time, 
+            freq=self.freq,
+
+            history_length=self.history_length,
+            lags_seq=self.lags_seq,
+            block=self.block, 
+            stacks=self.stacks,
+            linear_layers=self.linear_layers,
+            layer_size=self.layer_size,
+            
+            attention_layers=self.attention_layers,
+            attention_embedding_size=self.attention_embedding_size,
+            attention_heads=self.attention_heads,
+            positional_encoding=self.positional_encoding,
+
+            dequantize = self.dequantize,
+            flow_type = self.flow_type,
+
+            interpretable=self.interpretable,
+            degree_of_polynomial=self.degree_of_polynomial,
+            trend_layer_size=self.trend_layer_size,
+            seasonality_layer_size=self.seasonality_layer_size,
+            num_of_harmonics=self.num_of_harmonics,
+          
+        ).to(device)
+            
+
+
+
+    def create_predictor(
+        self,
+        transformation: Transformation,
+        trained_network: nn.Module,
+        device: torch.device,
+    ) -> Predictor:
+        prediction_network = NBEATSFlowPredictionNetwork(
+            loss_function=self.loss_function, 
+            input_dim=self.input_dim, 
+            target_dim=self.target_dim,
+            context_length=self.context_length, 
+            prediction_length=self.prediction_length,
+            stack_features_along_time=self.stack_features_along_time,  
+            freq=self.freq,
+            history_length=self.history_length,
+            lags_seq=self.lags_seq,
+
+            block=self.block, 
+            stacks=self.stacks,
+            linear_layers=self.linear_layers,
+            layer_size=self.layer_size,
+
+            attention_layers=self.attention_layers,
+            attention_embedding_size=self.attention_embedding_size,
+            attention_heads=self.attention_heads,
+            positional_encoding=self.positional_encoding,
+
+            dequantize = self.dequantize,
+            flow_type = self.flow_type,
+
+            interpretable=self.interpretable,
+            degree_of_polynomial=self.degree_of_polynomial,
+            trend_layer_size=self.trend_layer_size,
+            seasonality_layer_size=self.seasonality_layer_size,
+            num_of_harmonics=self.num_of_harmonics
+        ).to(device)
+
+        copy_parameters(trained_network, prediction_network)
+        input_names = get_module_forward_input_names(prediction_network)
+        prediction_splitter = self.create_instance_splitter("test")
+
+        return PyTorchPredictor(
+            input_transform=transformation + prediction_splitter,
+            input_names=input_names,
+            prediction_net=prediction_network,
+            batch_size=self.trainer.batch_size,
+            freq=self.freq,
+            prediction_length=self.prediction_length,
+            device=device,
+        )

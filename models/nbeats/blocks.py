@@ -24,6 +24,7 @@ class NBeatsBlockBase(torch.nn.Module):
               attention_layers : int = 1,
               attention_embedding_size = 100,
               attention_heads = 1,
+              positional_encoding=False
               ):
         """
         N-BEATS block.
@@ -37,6 +38,7 @@ class NBeatsBlockBase(torch.nn.Module):
         :param attention_layers:  not needed here but still here that all block types have the same signature
         :param attention_embedding_size: embedding size of attention layers
         :param attention_heads: number of attention heads in attention layers
+        :param positional_encoding: if true, using positional encoding in time attention block
         """
         super().__init__()
         self.input_size = input_size
@@ -49,6 +51,7 @@ class NBeatsBlockBase(torch.nn.Module):
         self.attention_layers = attention_layers 
         self.attention_embedding_size = attention_embedding_size
         self.attention_heads = attention_heads
+        self.use_positional_encoding = positional_encoding
 
     
     def forward(self, *args, **kwargs):
@@ -107,27 +110,31 @@ class MultivariateNBeatsBlock(NBeatsBlockBase):
         split_layers = self.linear_layers // 2
         merged_layers = self.linear_layers // 2
 
+        branch_layer_size = self.layer_size//2
+
+        
+
         # general Linear: (N,∗,H_in) --> (N,∗,H_out)
         # linear timeInputLayer: (N, E, S) --> (N, E, 512)
-        self.timeInputLayer = torch.nn.Linear(in_features=self.input_size, out_features=self.layer_size) 
+        self.timeInputLayer = torch.nn.Linear(in_features=self.input_size, out_features=branch_layer_size) 
 
         # linear featuresInputLayer: (N, S, E) --> (N, S, 512)
-        self.featuresInputLayer = torch.nn.Linear(in_features=self.input_dim, out_features=self.layer_size) 
+        self.featuresInputLayer = torch.nn.Linear(in_features=self.input_dim, out_features=branch_layer_size) 
 
         # linear timeLayers input: (N, E, 512) --> (N, E, S)
         self.timeLayers =  torch.nn.ModuleList(
-            [torch.nn.Linear(in_features=self.layer_size, out_features=self.layer_size)  
+            [torch.nn.Linear(in_features=branch_layer_size, out_features=branch_layer_size)  
             for _ in range(max(0, split_layers - 2))] 
 
-            + [torch.nn.Linear(in_features=self.layer_size, out_features=self.input_size)]
+            + [torch.nn.Linear(in_features=branch_layer_size, out_features=self.input_size)]
         )
 
         # linear featureLayers input: (N, S, 512) --> (N, S, E)
         self.featureLayers =  torch.nn.ModuleList(
-            [torch.nn.Linear(in_features=self.layer_size, out_features=self.layer_size)  
+            [torch.nn.Linear(in_features=branch_layer_size, out_features=branch_layer_size)  
             for _ in range(max(0, split_layers - 2))] 
 
-            + [torch.nn.Linear(in_features=self.layer_size, out_features=self.input_dim)]
+            + [torch.nn.Linear(in_features=branch_layer_size, out_features=self.input_dim)]
         )
 
         # in forward:
@@ -258,7 +265,6 @@ class FeatureAttentionNBeatsBlock(NBeatsBlockBase):
 
 
 
-
 class PositionalEncoding(nn.Module):
 
     def __init__(self, d_model, dropout=0.2, max_len=500):
@@ -279,7 +285,7 @@ class PositionalEncoding(nn.Module):
 
 
 
-# attention over time steps
+# attention over time steps (standard)
 class TimeAttentionNBeatsBlock(NBeatsBlockBase):
     """
     N-BEATS block which takes a basis function as an argument.
@@ -287,6 +293,7 @@ class TimeAttentionNBeatsBlock(NBeatsBlockBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.init_block()
+        
         
     def init_block(self):
 
@@ -298,7 +305,8 @@ class TimeAttentionNBeatsBlock(NBeatsBlockBase):
         self.inputLayer = torch.nn.Linear(in_features=self.input_dim, out_features=self.attention_embedding_size) 
 
         # linear layer: (N, S, Embedding_size) --> (N, S, Embedding_size)
-        self.positional_encoding = PositionalEncoding(d_model=self.attention_embedding_size)
+        if self.use_positional_encoding:
+          self.positional_encoding = PositionalEncoding(d_model=self.attention_embedding_size)
 
         # attention input: query: (S, N, Embedding_size), key: (S, N, Embedding_size), value: (S, N, Embedding_size) 
         # attention output: (S, N, Embedding_size) 
@@ -313,7 +321,7 @@ class TimeAttentionNBeatsBlock(NBeatsBlockBase):
         self.layers =  torch.nn.ModuleList(
             
             [torch.nn.Linear(in_features=self.attention_embedding_size, out_features=self.attention_embedding_size)  
-            for _ in range(self.linear_layers - 2)] # minus input layer and basis_parameters
+            for _ in range(max(0, self.linear_layers - 2))] # minus input layer and basis_parameters
 
             + [torch.nn.Linear(in_features=self.attention_embedding_size, out_features=self.input_dim) ]
         )
@@ -328,6 +336,9 @@ class TimeAttentionNBeatsBlock(NBeatsBlockBase):
         # @x: tensor of shape (N, E, S) 
         block_input = x
         block_input = torch.relu(self.inputLayer(block_input.permute(0, 2, 1))) #linear layer: (N, S, E) --> (N, S, Embedding_size)
+
+        if self.use_positional_encoding:
+          block_input = self.positional_encoding(block_input)
 
         block_input = block_input.permute(1, 0, 2) # shape: (S, N, Embedding_size)
  
@@ -346,6 +357,5 @@ class TimeAttentionNBeatsBlock(NBeatsBlockBase):
         # basis_parameters: (N, E, S) --> (N, E, S+T)
         basis_parameters = self.basis_parameters(block_input.permute(0, 2, 1)) # outputs: (N, E, S+T)
         return self.basis_function(basis_parameters) #outputs:  backcast: (N,E,S), forecast: (N,E,T)
-
 
 

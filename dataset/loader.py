@@ -53,8 +53,9 @@ def load_dataset(name='traffic_nips', validation_set=True, train_pct=0.7):
 
     print('metadata: ', dataset.metadata)
     print('dataset_train shape ', dataset_train.list_data[0]['target'].shape)
-    print('dataset_val shape ', dataset_val.list_data[0]['target'].shape)
-    print('dataset_test shape ', dataset_test.list_data[0]['target'].shape)
+    if validation_set:
+        print('dataset_val shape ', dataset_val.list_data[0]['target'].shape)
+        print('dataset_test shape ', dataset_test.list_data[0]['target'].shape)
 
     if validation_set:
         return dataset, dataset_train, dataset_val, dataset_test, split_offset

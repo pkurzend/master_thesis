@@ -4,6 +4,7 @@ import pts
 from tqdm import tqdm
 
 import os
+import sys
 
 import numpy as np
 import torch
@@ -170,7 +171,8 @@ class Trainer(Trainer):
 
 
                     inputs = [v.to(self.device) for v in data_entry.values()]
-                    
+                    # print('inputs: ', [item for item in inputs[2].flatten().tolist() if item != 1.0])
+                    # sys.stdout.flush()
                     # if not np.isfinite(ndarray.sum(loss).asscalar()):
   
                     output = net(*inputs)
@@ -316,6 +318,9 @@ class Trainer_pts:
             epochs=self.epochs,
         )
 
+        if torch.cuda.device_count() > 1:
+            net = MyDataParallel(net)
+
         for epoch_no in range(self.epochs):
             # mark epoch start time
             tic = time.time()
@@ -385,6 +390,9 @@ class Trainer_pts:
                             break
 
                 it.close()
+            # this is the only code not from pytorch_ts library
+            if torch.cuda.device_count() > 1:
+                net = net.unParallelize()
 
             # mark epoch end time and log time cost of current epoch
             toc = time.time()

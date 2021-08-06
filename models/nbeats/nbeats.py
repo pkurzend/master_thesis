@@ -96,6 +96,7 @@ def generate_model(input_size: int,
             attention_layers : int=1, 
             attention_embedding_size : int=512, 
             attention_heads : int = 1,
+            positional_encoding : bool = True,
 
             # parameters for interpretable verions
             degree_of_polynomial : int = 3,
@@ -120,6 +121,7 @@ def generate_model(input_size: int,
                                                     attention_layers=attention_layers,
                                                     attention_embedding_size=attention_embedding_size,
                                                     attention_heads=attention_heads,
+                                                    positional_encoding=positional_encoding,
                                                   )
                                       for _ in range(stacks)]
                                     + [block(   input_size=input_size,
@@ -133,6 +135,7 @@ def generate_model(input_size: int,
                                                     attention_layers=attention_layers,
                                                     attention_embedding_size=attention_embedding_size,
                                                     attention_heads=attention_heads,
+                                                    positional_encoding=positional_encoding,
                                                   )
                                       for _ in range(covariate_blocks)])
     else: # interpretable
@@ -152,7 +155,9 @@ def generate_model(input_size: int,
                             layer_size=trend_layer_size,
                             attention_layers=attention_layers,
                             attention_embedding_size=attention_embedding_size,
-                            attention_heads=attention_heads,)
+                            attention_heads=attention_heads,
+                            positional_encoding=positional_encoding,
+                          )
         
         seasonality_block = block(  input_size=input_size,
                                     input_dim=input_dim,
@@ -166,7 +171,9 @@ def generate_model(input_size: int,
                                     layer_size=seasonality_layer_size,
                                     attention_layers=attention_layers,
                                     attention_embedding_size=attention_embedding_size,
-                                    attention_heads=attention_heads,)
+                                    attention_heads=attention_heads,
+                                    positional_encoding=positional_encoding,
+                                  )
         
         covariates_block = block(   input_size=input_size,
                                                     input_dim=input_dim,
@@ -179,6 +186,7 @@ def generate_model(input_size: int,
                                                     attention_layers=attention_layers,
                                                     attention_embedding_size=attention_embedding_size,
                                                     attention_heads=attention_heads,
+                                                    positional_encoding=positional_encoding,
                                                   )
 
         blocks =  torch.nn.ModuleList(

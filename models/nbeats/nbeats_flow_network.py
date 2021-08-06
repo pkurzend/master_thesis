@@ -14,16 +14,25 @@ import torch.nn.functional as F
 
 from gluonts.time_feature import get_seasonality
 
-from .nbeats import generate_model 
-from .blocks import NBeatsBlock 
+
+from .nbeats import generate_model, NBeatsBlock
+# from models.nbeats import generate_model, NBeatsBlock
+
+# from pts.modules import RealNVP, MAF, FlowOutput, MeanScaler, NOPScaler
+from pts.modules import  MeanScaler, NOPScaler, FlowOutput
+from .flow import RealNVP, MAF
+
+
+import pytorch_model_summary as pms
+from ..utils import count_parameters
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+import sys 
 
 
 
-
-class NBEATSTrainingNetwork(nn.Module):
+class NBEATSFlowTrainingNetwork(nn.Module):
     """
     model to train nbeats network
     forward method returns loss of nbeats forecasts
@@ -38,7 +47,7 @@ class NBEATSTrainingNetwork(nn.Module):
     """
 
     def __init__(self, loss_function, input_dim, target_dim, context_length , prediction_length, freq, lags_seq, history_length,
-                 stack_features_along_time,
+                 stack_features_along_time=False,
                   stacks: int=30, 
                   linear_layers: int=4, 
                   layer_size: int=512, 
@@ -46,8 +55,10 @@ class NBEATSTrainingNetwork(nn.Module):
                   attention_layers : int=1, 
                   attention_embedding_size : int=512, 
                   attention_heads : int = 1,
-
-                 
+                  positional_encoding : bool = True,
+                
+                  dequantize : bool = False,
+                  flow_type : str = 'MAF',
                  
                   # parameters for interpretable verions
                   interpretable : bool = False,
@@ -60,6 +71,8 @@ class NBEATSTrainingNetwork(nn.Module):
       
         super().__init__()
 
+        print(f'USING NBEATS WITH NORMALIZEING FLOW with flow_type {flow_type} and positional_encoding {positional_encoding}')
+
         
         self.loss_function = loss_function
         self.prediction_length = prediction_length
@@ -70,13 +83,18 @@ class NBEATSTrainingNetwork(nn.Module):
         self.history_length = history_length
         self.stack_features_along_time=stack_features_along_time
 
+        self.positional_encoding=positional_encoding
+
+        self.dequantize = dequantize
+        self.flow_type = flow_type
+
         self.interpretable = interpretable
         self.degree_of_polynomial=degree_of_polynomial
         self.trend_layer_size=trend_layer_size
         self.seasonality_layer_size=seasonality_layer_size 
         self.num_of_harmonics=num_of_harmonics 
 
-        
+ 
 
 
         self.periodicity = get_seasonality(self.freq)
@@ -114,14 +132,45 @@ class NBEATSTrainingNetwork(nn.Module):
                                            attention_layers=attention_layers,
                                            attention_embedding_size=attention_embedding_size,
                                            attention_heads=attention_heads,
+                                           positional_encoding=positional_encoding,
                                            interpretable=interpretable,
                                            degree_of_polynomial=degree_of_polynomial,
                                            trend_layer_size=trend_layer_size,
                                            seasonality_layer_size=seasonality_layer_size,
                                            num_of_harmonics=num_of_harmonics
                                            )
+                                           
+        self.number_of_parameters = count_parameters(self.nb_model)
 
+        # default parameters from temporal flow model
+        n_blocks=5
+        hidden_size=100
+        n_hidden=2
+        conditioning_length = 200
+        self.dequantize = dequantize
 
+        
+        flow_cls = {
+            "RealNVP": RealNVP,
+            "MAF": MAF,
+        }[self.flow_type]
+
+        print('create Fow')
+        print(target_dim, n_blocks, n_hidden, hidden_size, conditioning_length)
+        sys.stdout.flush()
+        self.flow = flow_cls(
+            input_size=target_dim,
+            n_blocks=n_blocks,
+            n_hidden=n_hidden,
+            hidden_size=hidden_size,
+            cond_label_size=conditioning_length,
+        )
+        print('Fow created')
+        self.distr_output = FlowOutput(
+            self.flow, input_size=target_dim, cond_size=conditioning_length
+        )
+
+        self.proj_dist_args = self.distr_output.get_args_proj(target_dim) # prediction_length
 
 
     @staticmethod
@@ -169,7 +218,29 @@ class NBEATSTrainingNetwork(nn.Module):
         return torch.cat(lagged_values, dim=1).permute(0, 2, 3, 1)
 
 
+    def distr_args(self, decoder_output: torch.Tensor):
+        """
+        Returns the distribution of DeepVAR with respect to the RNN outputs.
+        Parameters
+        ----------
+        rnn_outputs
+            Outputs of the unrolled RNN (batch_size, seq_len, num_cells)
+        scale
+            Mean scale for each time series (batch_size, 1, target_dim)
+        Returns
+        -------
+        distr
+            Distribution instance
+        distr_args
+            Distribution arguments
+        """
+        (distr_args,) = self.proj_dist_args(decoder_output)
 
+        # # compute likelihood of target given the predicted parameters
+        # distr = self.distr_output.distribution(distr_args, scale=scale)
+
+        # return distr, distr_args
+        return distr_args
 
 
 
@@ -454,70 +525,59 @@ class NBEATSTrainingNetwork(nn.Module):
         zeros = torch.zeros(past_is_pad.shape).to(device)
         pad_mask = torch.where(past_is_pad == 1, zeros, ones)
 
-
+        # if self.firstBatchIndicator and torch.cuda.device_count()==1:
+            
+        #     pms.summary(self.nb_model, time_series_inputs, time_feat_inputs, static_inputs, pad_mask, show_input=True, print_summary=True)
+            
         # forecast
-        forecast = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
+        nbeats_output = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
         
 
 
+       
+        self.flow.scale = scale
+
+        # we sum the last axis to have the same shape for all likelihoods
+        # (batch_size, subseq_length, 1)
+        if self.dequantize:
+            future_target += torch.rand_like(future_target)
 
 
-        # returns data of shape (N, S, E)
-        # scaled_past_target, scale = self.scaler(
-        #     past_target,
-        #     torch.ones_like(past_target).to(device),
-        # )
+        # transformer output is (T,N,E)
+        # nbeatsoutput is (N, T, E)
+        # future_target is (N, T, E)
+        distr_args = self.distr_args(decoder_output=nbeats_output) # .permute(1, 0, 2)
+        # likelihoods = -self.flow.log_prob(target, distr_args).unsqueeze(-1)
+        loss = -self.flow.log_prob(future_target, distr_args).unsqueeze(-1)
+
+        self.firstBatchIndicator = False  
+        return loss.mean(), distr_args
 
 
-  
+        # # apply loss function
+        # if self.loss_function == "sMAPE":
+        #     loss = self.smape_loss(forecast, future_target)
+        # elif self.loss_function == "MAPE":
+        #     loss = self.mape_loss(forecast, future_target)
+        # elif self.loss_function == "MASE":
+        #     loss = self.mase_loss(
+        #         forecast, future_target, past_target / scale, self.periodicity
+        #     )
+        # elif self.loss_function == "MSE":
+        #     loss = torch.nn.MSELoss()(forecast, future_target)
+        # else:
+        #     raise ValueError(
+        #         f"Invalid value {self.loss_function} for argument loss_function."
+        #     )
 
 
-        # forecast
-        # forecast = self.nb_model.forward(x=scaled_past_target) #shape: (N, T, E)
-        # print('forecast (shape, min, max, mean): ', forecast.shape, forecast.min().item(), forecast.max().item(), forecast.mean().item())
+        # # print('loss: ', 'min: ', loss.min().item(), 'max: ', loss.max().item(), loss.shape, 'forecast: ', 'min: ', forecast.min().item(), 'max: ', forecast.max().item(), 'mean: ', forecast.mean().item(), 'difference: ', (forecast-future_target).min().item() ,(forecast-future_target).max().item(),  'forecast nans? ', torch.isnan(forecast).any().item())
 
-
-        # if self.firstBatchIndicator:
-        #     # pints here
-        #     print('past_target ', past_target.shape)
-        #     print('future_target ', future_target.shape)
-        #     print('past_is_pad ', past_is_pad.shape)
-        #     print('past_time_feat ', past_time_feat.shape)
-        #     print('future_time_feat ', future_time_feat.shape)
-        #     print('past_observed_values ', past_observed_values.shape)
-        #     print('future_observed_values ', future_observed_values.shape)
-        #     print('target_dimension_indicator ', target_dimension_indicator.shape)
-
-        #     self.firstBatchIndicator = False
-
-
-        # future_target = future_target / scale
-
-
-        # apply loss function
-        if self.loss_function == "sMAPE":
-            loss = self.smape_loss(forecast, future_target)
-        elif self.loss_function == "MAPE":
-            loss = self.mape_loss(forecast, future_target)
-        elif self.loss_function == "MASE":
-            loss = self.mase_loss(
-                forecast, future_target, past_target / scale, self.periodicity
-            )
-        elif self.loss_function == "MSE":
-            loss = torch.nn.MSELoss()(forecast, future_target)
-        else:
-            raise ValueError(
-                f"Invalid value {self.loss_function} for argument loss_function."
-            )
-
-
-        # print('loss: ', 'min: ', loss.min().item(), 'max: ', loss.max().item(), loss.shape, 'forecast: ', 'min: ', forecast.min().item(), 'max: ', forecast.max().item(), 'mean: ', forecast.mean().item(), 'difference: ', (forecast-future_target).min().item() ,(forecast-future_target).max().item(),  'forecast nans? ', torch.isnan(forecast).any().item())
-
-        return loss.mean()
+        # return loss.mean()
 
 
 
-class NBEATSPredictionNetwork(NBEATSTrainingNetwork):
+class NBEATSFlowPredictionNetwork(NBEATSFlowTrainingNetwork):
     def __init__(self, **kwargs):
                  
         super().__init__(**kwargs)
@@ -569,18 +629,15 @@ class NBEATSPredictionNetwork(NBEATSTrainingNetwork):
 
 
         # forecast
-        forecast = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
+        nbeats_output = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
         
-        return forecast.unsqueeze(1)
+        self.flow.scale = scale
 
+        distr_args = self.distr_args(decoder_output=nbeats_output) # .permute(1, 0, 2)
 
-
-
-
-
-
-
-
+        # (batch_size, 1, target_dim)
+        samples = self.flow.sample(cond=distr_args)
+        return samples.unsqueeze(1)
 
 
 

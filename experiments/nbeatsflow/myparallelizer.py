@@ -3,6 +3,7 @@
 
 
 import os
+import sys
 
 # creates folders
 folders = ['models', 'gridresults', 'errs', 'logs']
@@ -11,7 +12,14 @@ for f in folders:
         os.makedirs(f)
     except OSError:
         pass
+print('sure to start that many jobs?')
+print('if yes, type "continue"')
+cond = input()
+if cond != 'continue':
+	print('abording...')
+	sys.exit(0)
 
+sys.exit(0)
 # pyperparameter grid
 dataset_names = ['electricity_nips', 'traffic_nips', 'solar_nips']
 lrs = [1e-4, 1e-5]

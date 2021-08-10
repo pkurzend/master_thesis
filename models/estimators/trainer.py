@@ -20,6 +20,8 @@ import uuid
 
 from ..nbeats import generate_model, NBEATSTrainingNetwork, NBEATSPredictionNetwork, NBeatsBlock
 
+from ..utils import count_parameters
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # TODO:
@@ -98,6 +100,7 @@ class Trainer(Trainer):
             steps_per_epoch=self.num_batches_per_epoch,
             epochs=self.epochs,
         )
+        print('number of trainable parameters: ', count_parameters(self.nb_model))
 
 
         # make model use several gpus

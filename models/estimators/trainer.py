@@ -100,7 +100,7 @@ class Trainer(Trainer):
             steps_per_epoch=self.num_batches_per_epoch,
             epochs=self.epochs,
         )
-        print('number of trainable parameters: ', count_parameters(self.nb_model))
+        print('number of trainable parameters: ', count_parameters(net))
 
 
         # make model use several gpus

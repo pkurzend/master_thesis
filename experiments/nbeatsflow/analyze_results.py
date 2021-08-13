@@ -35,3 +35,7 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips']:
         print(f"mse: {item['metrics']['mse']} \tcrps: {item['metrics']['crps']} \tcrps_sum: {item['metrics']['crps_sum']}")
     print(f"BASELINE: mse: {180000} \tcrps: {0.052} \tcrps_sum: {0.0207}")
     print()
+
+    for item in sorted_results[:5]:
+        print(item['hyperparameters'])
+    print(f"BASELINE: mse: {180000} \tcrps: {0.052} \tcrps_sum: {0.0207}")

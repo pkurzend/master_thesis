@@ -24,7 +24,8 @@ class NBeatsBlockBase(torch.nn.Module):
               attention_layers : int = 1,
               attention_embedding_size = 100,
               attention_heads = 1,
-              positional_encoding=False
+              positional_encoding=False,
+              dropout = 0.1
               ):
         """
         N-BEATS block.
@@ -39,6 +40,7 @@ class NBeatsBlockBase(torch.nn.Module):
         :param attention_embedding_size: embedding size of attention layers
         :param attention_heads: number of attention heads in attention layers
         :param positional_encoding: if true, using positional encoding in time attention block
+        :param dropout: dropout used in all layers like attention, transformer encoder, positional encoding
         """
         super().__init__()
         self.input_size = input_size
@@ -52,6 +54,7 @@ class NBeatsBlockBase(torch.nn.Module):
         self.attention_embedding_size = attention_embedding_size
         self.attention_heads = attention_heads
         self.use_positional_encoding = positional_encoding
+        self.dropout = dropout
 
     
     def forward(self, *args, **kwargs):
@@ -212,7 +215,7 @@ class FeatureAttentionNBeatsBlock(NBeatsBlockBase):
         # attention input: query: (E_small, N, S), key: (E_small, N, S), value: (E_small, N, S) 
         # attention output: (E_small, N, S) 
         self.selfAttentionLayers = torch.nn.ModuleList(
-                        [torch.nn.MultiheadAttention(embed_dim=self.input_size, num_heads=self.attention_heads, dropout=0.1)  # embed_dim must be divisible by num_headsyy 
+                        [torch.nn.MultiheadAttention(embed_dim=self.input_size, num_heads=self.attention_heads, dropout=self.dropout)  # embed_dim must be divisible by num_headsyy 
                         for _ in range(self.attention_layers)]
                   ) 
         
@@ -306,12 +309,12 @@ class TimeAttentionNBeatsBlock(NBeatsBlockBase):
 
         # linear layer: (N, S, Embedding_size) --> (N, S, Embedding_size)
         if self.use_positional_encoding:
-          self.positional_encoding = PositionalEncoding(d_model=self.attention_embedding_size)
+          self.positional_encoding = PositionalEncoding(d_model=self.attention_embedding_size, dropout=self.dropout)
 
         # attention input: query: (S, N, Embedding_size), key: (S, N, Embedding_size), value: (S, N, Embedding_size) 
         # attention output: (S, N, Embedding_size) 
         self.selfAttentionLayers = torch.nn.ModuleList(
-                        [torch.nn.MultiheadAttention(embed_dim=self.attention_embedding_size, num_heads=self.attention_heads, dropout=0.1)  # embed_dim must be divisible by num_headsyy 
+                        [torch.nn.MultiheadAttention(embed_dim=self.attention_embedding_size, num_heads=self.attention_heads, dropout=self.dropout)  # embed_dim must be divisible by num_headsyy 
                         for _ in range(self.attention_layers)]
                   ) 
 

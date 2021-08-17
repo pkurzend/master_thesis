@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.data import DataLoader
 
@@ -57,10 +57,12 @@ class Trainer(Trainer):
         num_batches_per_epoch: int = 50,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-6,
+        betas = (0.9, 0.999),
         maximum_learning_rate: float = 1e-5,
         restore_best: bool = True,
         clip_gradient: Optional[float] = None,
         device: Optional[Union[torch.device, str]] = None,
+        optimizer = None,
         **kwargs,
     ) -> None:
 
@@ -71,10 +73,12 @@ class Trainer(Trainer):
         self.num_batches_per_epoch = num_batches_per_epoch
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
+        self.betas = betas
         self.maximum_learning_rate = maximum_learning_rate
         self.clip_gradient = clip_gradient
         self.device = device
-        self.restore_best = restore_best
+        self.restore_best = restore_best,
+        self.optimizer = optimizer
 
 
     def __call__(
@@ -90,9 +94,16 @@ class Trainer(Trainer):
         self.first_train_batch = True
         self.first_val_batch = True
         
-        optimizer = Adam(
-            net.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay
-        )
+        if self.optimizer is None:
+            optimizer = Adam(
+                net.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, betas=self.betas,
+            )
+        elif self.optimizer == 'AdamW':
+            optimizer = AdamW(
+                net.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, betas=self.betas,
+            )
+
+        
 
         lr_scheduler = OneCycleLR(
             optimizer,

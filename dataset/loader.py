@@ -18,8 +18,12 @@ from gluonts.dataset.common import ListDataset
 
 
 def load_dataset(name='traffic_nips', validation_set=True, train_pct=0.7):
-
-    dataset = get_dataset(name, regenerate=False)
+    
+    try:
+        dataset = get_dataset(name, regenerate=False)
+    except FileNotFoundError:
+        dataset = get_dataset(name, regenerate=True)
+        
     print(dataset.train.__dict__)
     print(dataset.test.__dict__)
 

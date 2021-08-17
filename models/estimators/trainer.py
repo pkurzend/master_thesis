@@ -99,6 +99,7 @@ class Trainer(Trainer):
                 net.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, betas=self.betas,
             )
         elif self.optimizer == 'AdamW':
+            print('using AdamW optimizer')
             optimizer = AdamW(
                 net.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, betas=self.betas,
             )

@@ -8,6 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .basis_functions import GenericBasis, TrendBasis, SeasonalityBasis, ExogenousBasisInterpretable
 from .blocks import NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock
+from .blocks import SimpleNBeatsBlock, LinearNBeatsBlock, LinearAttentionNBeatsBlock, LinearTransformerEncoderNBeatsBlock, LinearConvNBeatsBlock
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -96,7 +98,9 @@ def generate_model(input_size: int,
             attention_layers : int=1, 
             attention_embedding_size : int=512, 
             attention_heads : int = 1,
-            positional_encoding : bool = True,
+            positional_encoding : bool = True,                                            
+            dropout=0.1,
+            use_dropout_layer=False,
 
             # parameters for interpretable verions
             degree_of_polynomial : int = 3,
@@ -122,6 +126,8 @@ def generate_model(input_size: int,
                                                     attention_embedding_size=attention_embedding_size,
                                                     attention_heads=attention_heads,
                                                     positional_encoding=positional_encoding,
+                                                    dropout=dropout,
+                                                    use_dropout_layer=use_dropout_layer
                                                   )
                                       for _ in range(stacks)]
                                     + [block(   input_size=input_size,
@@ -136,6 +142,8 @@ def generate_model(input_size: int,
                                                     attention_embedding_size=attention_embedding_size,
                                                     attention_heads=attention_heads,
                                                     positional_encoding=positional_encoding,
+                                                    dropout=dropout,
+                                                    use_dropout_layer=use_dropout_layer
                                                   )
                                       for _ in range(covariate_blocks)])
     else: # interpretable
@@ -157,6 +165,8 @@ def generate_model(input_size: int,
                             attention_embedding_size=attention_embedding_size,
                             attention_heads=attention_heads,
                             positional_encoding=positional_encoding,
+                            dropout=dropout,
+                            use_dropout_layer=use_dropout_layer
                           )
         
         seasonality_block = block(  input_size=input_size,
@@ -173,6 +183,8 @@ def generate_model(input_size: int,
                                     attention_embedding_size=attention_embedding_size,
                                     attention_heads=attention_heads,
                                     positional_encoding=positional_encoding,
+                                    dropout=dropout,
+                                    use_dropout_layer=use_dropout_layer
                                   )
         
         covariates_block = block(   input_size=input_size,
@@ -187,6 +199,8 @@ def generate_model(input_size: int,
                                                     attention_embedding_size=attention_embedding_size,
                                                     attention_heads=attention_heads,
                                                     positional_encoding=positional_encoding,
+                                                    dropout=dropout,
+                                                    use_dropout_layer=use_dropout_layer
                                                   )
 
         blocks =  torch.nn.ModuleList(

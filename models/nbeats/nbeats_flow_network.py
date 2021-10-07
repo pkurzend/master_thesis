@@ -31,7 +31,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import sys 
 
 
-
 class NBEATSFlowTrainingNetwork(nn.Module):
     """
     model to train nbeats network
@@ -56,9 +55,11 @@ class NBEATSFlowTrainingNetwork(nn.Module):
                   attention_embedding_size : int=512, 
                   attention_heads : int = 1,
                   positional_encoding : bool = True,
+                  dropout = 0.1,
+                  use_dropout_layer = False,
                 
                   dequantize : bool = False,
-                  flow_type : str = 'MAF',
+                  flow_type : str = 'RealNVP',
                  
                   # parameters for interpretable verions
                   interpretable : bool = False,
@@ -84,6 +85,8 @@ class NBEATSFlowTrainingNetwork(nn.Module):
         self.stack_features_along_time=stack_features_along_time
 
         self.positional_encoding=positional_encoding
+        self.dropout = dropout
+        self.use_dropout_layer = use_dropout_layer
 
         self.dequantize = dequantize
         self.flow_type = flow_type
@@ -133,6 +136,8 @@ class NBEATSFlowTrainingNetwork(nn.Module):
                                            attention_embedding_size=attention_embedding_size,
                                            attention_heads=attention_heads,
                                            positional_encoding=positional_encoding,
+                                           dropout=dropout,
+                                           use_dropout_layer=use_dropout_layer,
                                            interpretable=interpretable,
                                            degree_of_polynomial=degree_of_polynomial,
                                            trend_layer_size=trend_layer_size,
@@ -172,7 +177,8 @@ class NBEATSFlowTrainingNetwork(nn.Module):
 
         self.proj_dist_args = self.distr_output.get_args_proj(target_dim) # prediction_length
 
-
+        print('number of trainable parameters: ', count_parameters(self.nb_model))
+        
     @staticmethod
     def get_lagged_subsequences(
         sequence: torch.Tensor,
@@ -525,9 +531,6 @@ class NBEATSFlowTrainingNetwork(nn.Module):
         zeros = torch.zeros(past_is_pad.shape).to(device)
         pad_mask = torch.where(past_is_pad == 1, zeros, ones)
 
-        # if self.firstBatchIndicator and torch.cuda.device_count()==1:
-            
-        #     pms.summary(self.nb_model, time_series_inputs, time_feat_inputs, static_inputs, pad_mask, show_input=True, print_summary=True)
             
         # forecast
         nbeats_output = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
@@ -554,26 +557,7 @@ class NBEATSFlowTrainingNetwork(nn.Module):
         return loss.mean(), distr_args
 
 
-        # # apply loss function
-        # if self.loss_function == "sMAPE":
-        #     loss = self.smape_loss(forecast, future_target)
-        # elif self.loss_function == "MAPE":
-        #     loss = self.mape_loss(forecast, future_target)
-        # elif self.loss_function == "MASE":
-        #     loss = self.mase_loss(
-        #         forecast, future_target, past_target / scale, self.periodicity
-        #     )
-        # elif self.loss_function == "MSE":
-        #     loss = torch.nn.MSELoss()(forecast, future_target)
-        # else:
-        #     raise ValueError(
-        #         f"Invalid value {self.loss_function} for argument loss_function."
-        #     )
 
-
-        # # print('loss: ', 'min: ', loss.min().item(), 'max: ', loss.max().item(), loss.shape, 'forecast: ', 'min: ', forecast.min().item(), 'max: ', forecast.max().item(), 'mean: ', forecast.mean().item(), 'difference: ', (forecast-future_target).min().item() ,(forecast-future_target).max().item(),  'forecast nans? ', torch.isnan(forecast).any().item())
-
-        # return loss.mean()
 
 
 

@@ -149,7 +149,7 @@ class PyTorchEstimator(Estimator):
                 **kwargs,
             )
         print('estimator call trainer')
-        train_losses, train_epoch_losses, val_losses, val_epoch_losses = self.trainer(
+        train_losses, train_epoch_losses, val_losses, val_epoch_losses, val_data = self.trainer(
             net=trained_net,
             train_iter=training_data_loader,
             validation_iter=validation_data_loader,
@@ -161,6 +161,7 @@ class PyTorchEstimator(Estimator):
         if val_losses is not None :
             self.history['val_losses'] = val_losses
             self.history['val_epoch_losses'] = val_epoch_losses
+            self.history['val_data'] = val_data
 
         return TrainOutput(
             transformation=transformation,

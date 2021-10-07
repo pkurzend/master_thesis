@@ -17,10 +17,12 @@ from gluonts.time_feature import get_seasonality
 from .nbeats import generate_model 
 from .blocks import NBeatsBlock 
 
+import pytorch_model_summary as pms
+from ..utils import count_parameters
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-
+import sys 
 
 
 class NBEATSTrainingNetwork(nn.Module):
@@ -38,7 +40,7 @@ class NBEATSTrainingNetwork(nn.Module):
     """
 
     def __init__(self, loss_function, input_dim, target_dim, context_length , prediction_length, freq, lags_seq, history_length,
-                 stack_features_along_time,
+                 stack_features_along_time=False,
                   stacks: int=30, 
                   linear_layers: int=4, 
                   layer_size: int=512, 
@@ -46,7 +48,9 @@ class NBEATSTrainingNetwork(nn.Module):
                   attention_layers : int=1, 
                   attention_embedding_size : int=512, 
                   attention_heads : int = 1,
-
+                  positional_encoding : bool = True,
+                  dropout = 0.1,
+                  use_dropout_layer = False,
                  
                  
                   # parameters for interpretable verions
@@ -70,6 +74,9 @@ class NBEATSTrainingNetwork(nn.Module):
         self.history_length = history_length
         self.stack_features_along_time=stack_features_along_time
 
+        self.positional_encoding=positional_encoding
+        self.dropout = dropout
+        self.use_dropout_layer = use_dropout_layer
         self.interpretable = interpretable
         self.degree_of_polynomial=degree_of_polynomial
         self.trend_layer_size=trend_layer_size
@@ -114,6 +121,9 @@ class NBEATSTrainingNetwork(nn.Module):
                                            attention_layers=attention_layers,
                                            attention_embedding_size=attention_embedding_size,
                                            attention_heads=attention_heads,
+                                           positional_encoding=positional_encoding,
+                                           dropout=dropout,
+                                           use_dropout_layer=use_dropout_layer,
                                            interpretable=interpretable,
                                            degree_of_polynomial=degree_of_polynomial,
                                            trend_layer_size=trend_layer_size,
@@ -121,7 +131,7 @@ class NBEATSTrainingNetwork(nn.Module):
                                            num_of_harmonics=num_of_harmonics
                                            )
 
-
+        self.number_of_parameters = count_parameters(self.nb_model)
 
 
     @staticmethod
@@ -457,38 +467,13 @@ class NBEATSTrainingNetwork(nn.Module):
 
         # forecast
         forecast = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
-        
-
-
-
-
-        # returns data of shape (N, S, E)
-        # scaled_past_target, scale = self.scaler(
-        #     past_target,
-        #     torch.ones_like(past_target).to(device),
-        # )
 
 
   
 
 
-        # forecast
-        # forecast = self.nb_model.forward(x=scaled_past_target) #shape: (N, T, E)
-        # print('forecast (shape, min, max, mean): ', forecast.shape, forecast.min().item(), forecast.max().item(), forecast.mean().item())
 
 
-        # if self.firstBatchIndicator:
-        #     # pints here
-        #     print('past_target ', past_target.shape)
-        #     print('future_target ', future_target.shape)
-        #     print('past_is_pad ', past_is_pad.shape)
-        #     print('past_time_feat ', past_time_feat.shape)
-        #     print('future_time_feat ', future_time_feat.shape)
-        #     print('past_observed_values ', past_observed_values.shape)
-        #     print('future_observed_values ', future_observed_values.shape)
-        #     print('target_dimension_indicator ', target_dimension_indicator.shape)
-
-        #     self.firstBatchIndicator = False
 
 
         # future_target = future_target / scale

@@ -144,6 +144,8 @@ class NBEATSEstimator(PyTorchEstimator):
         attention_embedding_size : int=512, 
         attention_heads : int = 1,
         positional_encoding : bool = True,
+        dropout = 0.1,
+        use_dropout_layer=False,
 
         # parameters for interpretable verions
         interpretable : bool = False,
@@ -181,6 +183,8 @@ class NBEATSEstimator(PyTorchEstimator):
         self.attention_embedding_size=attention_embedding_size
         self.attention_heads=attention_heads
         self.positional_encoding = positional_encoding
+        self.dropout = dropout 
+        self.use_dropout_layer=use_dropout_layer
         
         # parameters for interpretable model, not used in generic model
         self.interpretable=interpretable
@@ -383,6 +387,9 @@ class NBEATSEstimator(PyTorchEstimator):
             attention_layers=self.attention_layers,
             attention_embedding_size=self.attention_embedding_size,
             attention_heads=self.attention_heads,
+            positional_encoding=self.positional_encoding,
+            dropout=self.dropout,
+            use_dropout_layer=self.use_dropout_layer,
 
             interpretable=self.interpretable,
             degree_of_polynomial=self.degree_of_polynomial,
@@ -418,6 +425,10 @@ class NBEATSEstimator(PyTorchEstimator):
             attention_layers=self.attention_layers,
             attention_embedding_size=self.attention_embedding_size,
             attention_heads=self.attention_heads,
+
+            positional_encoding=self.positional_encoding,
+            dropout=self.dropout,
+            use_dropout_layer=self.use_dropout_layer,
 
             interpretable=self.interpretable,
             degree_of_polynomial=self.degree_of_polynomial,
@@ -469,7 +480,10 @@ class NBEATSFlowEstimator(NBEATSEstimator):
             attention_layers=self.attention_layers,
             attention_embedding_size=self.attention_embedding_size,
             attention_heads=self.attention_heads,
+
             positional_encoding=self.positional_encoding,
+            dropout=self.dropout,
+            use_dropout_layer=self.use_dropout_layer,
 
             dequantize = self.dequantize,
             flow_type = self.flow_type,
@@ -510,7 +524,10 @@ class NBEATSFlowEstimator(NBEATSEstimator):
             attention_layers=self.attention_layers,
             attention_embedding_size=self.attention_embedding_size,
             attention_heads=self.attention_heads,
+            
             positional_encoding=self.positional_encoding,
+            dropout=self.dropout,
+            use_dropout_layer=self.use_dropout_layer,
 
             dequantize = self.dequantize,
             flow_type = self.flow_type,

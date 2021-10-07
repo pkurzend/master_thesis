@@ -63,6 +63,7 @@ class Trainer(Trainer):
         clip_gradient: Optional[float] = None,
         device: Optional[Union[torch.device, str]] = None,
         optimizer = None,
+        return_validation_data_points = 0,
         **kwargs,
     ) -> None:
 
@@ -79,6 +80,7 @@ class Trainer(Trainer):
         self.device = device
         self.restore_best = restore_best,
         self.optimizer = optimizer
+        self.return_validation_data_points = return_validation_data_points
 
 
     def __call__(
@@ -130,10 +132,12 @@ class Trainer(Trainer):
         nan_loss = False
 
         # store losses
-        train_losses = []
-        train_epoch_losses = []
+        train_losses = []  # record loss after each batch (list of lists)
+        train_epoch_losses = [] # record loss after each epoch (list)
         val_losses = [] 
         val_epoch_losses = [] 
+
+        val_data = []
 
         for epoch_no in range(self.epochs):
             # mark epoch start time
@@ -151,44 +155,36 @@ class Trainer(Trainer):
 
                 for batch_no, data_entry in enumerate(it, start=1):
 
-                    optimizer.zero_grad()
-
-
-                    # if self.first_train_batch:
-                    #     self.first_train_batch = False
-                    #     for name, t in data_entry.items():
-                    #       print('train ', name, t.shape)                    
+                    optimizer.zero_grad()                 
 
                     # validation_loss
                     if validation_iter is not None:
                         with torch.no_grad():
                             val_data_entry = next(iter(validation_iter))
-                            # print(val_data_entry)
-                            # if self.first_val_batch:
-                            #     self.first_val_batch = False
-                            #     for name, t in val_data_entry.items():
-                            #       print('val ', name, t.shape)
 
                             inputs_val = [v.to(self.device) for v in val_data_entry.values()]
 
 
                             output_val = net(*inputs_val)
 
+                            if (self.return_validation_data_points > 0) and (len(val_data) <= self.return_validation_data_points):
+                                inputs_val = [v.detach().to('cpu') for v in inputs_val]
+                                val_data.append(inputs_val)
+
+
                             if isinstance(output_val, (list, tuple)):
                                 loss_val = output_val[0]
                             else:
                                 loss_val = output_val
-                            # print('loss val ', loss_val, loss_val.shape)
+                            
                             if len(loss_val.shape) > 0: #false for torch.tensor(1.4).shape = torch.size([]), true for torch.tensor([1.4, 1.5]).shape = torch.size([2,])
                                 loss_val = loss_val.mean()
-                            # print('loss val mean ', loss_val)
+                            
                             avg_epoch_loss_val += loss_val.item()
 
 
                     inputs = [v.to(self.device) for v in data_entry.values()]
-                    # print('inputs: ', [item for item in inputs[2].flatten().tolist() if item != 1.0])
-                    # sys.stdout.flush()
-                    # if not np.isfinite(ndarray.sum(loss).asscalar()):
+        
   
                     output = net(*inputs)
                     if isinstance(output, (list, tuple)):
@@ -275,7 +271,7 @@ class Trainer(Trainer):
             net = net.unParallelize()
         
 
-        return train_losses, train_epoch_losses, val_losses, val_epoch_losses
+        return train_losses, train_epoch_losses, val_losses, val_epoch_losses, val_data
 
 
 

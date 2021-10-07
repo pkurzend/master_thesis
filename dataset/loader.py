@@ -40,7 +40,7 @@ def load_dataset(name='traffic_nips', validation_set=True, train_pct=0.7):
         import copy
         split_offset=int(dataset_train.list_data[0]['target'].shape[1]*train_pct)
         dataset_val = copy.deepcopy(dataset_train)
-        dataset_train.list_data[0]['target'] = dataset_train.list_data[0]['target'][:, :split_offset]
+        dataset_train.list_data[0]['target'] = dataset_train.list_data[0]['target'][:, :split_offset] # kein bug!!!!!!!
 
 
     # print(len(dataset_train))

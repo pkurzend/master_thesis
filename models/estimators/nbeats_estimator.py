@@ -166,7 +166,7 @@ class NBEATSEstimator(PyTorchEstimator):
         lags_seq: Optional[List[int]] = None,
         time_features: Optional[List[TimeFeature]] = None,
 
-        test_split_sampler : Optional[InstanceSampler] = None,
+        test_split_sampler  = None,
         **kwargs,
     ) -> None:
         super().__init__(trainer=trainer, **kwargs)

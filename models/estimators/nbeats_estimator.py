@@ -161,7 +161,7 @@ class NBEATSEstimator(PyTorchEstimator):
         dequantize : bool = False,
         flow_type : str = 'MAF',
 
-        test_split_sampler  = None,
+        hugo_anton  = None,
         split_offset : int = 0,
         pick_incomplete: bool = False,
         lags_seq: Optional[List[int]] = None,
@@ -276,8 +276,8 @@ class NBEATSEstimator(PyTorchEstimator):
             min_future=prediction_length,
         )
         
-        if test_split_sampler:
-            self.test_sampler = test_split_sampler
+        if hugo_anton:
+            self.test_sampler = hugo_anton
         else:
             self.test_sampler = TestSplitSampler()
 
@@ -465,7 +465,8 @@ class NBEATSEstimator(PyTorchEstimator):
 
 
 class NBEATSFlowEstimator(NBEATSEstimator):
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
      
     def create_training_network(self, device: torch.device) -> NBEATSFlowTrainingNetwork:
         print('CREATING FLOW TRAINING NETWORK')

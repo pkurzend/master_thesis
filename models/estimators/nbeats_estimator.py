@@ -124,7 +124,7 @@ class ExpectedNumInstanceSampler(ExpectedNumInstanceSampler):
         return indices + a
 
 class NBEATSEstimator(PyTorchEstimator):
-    @validated()
+    # @validated()
     def __init__(
         self,
         freq: str,

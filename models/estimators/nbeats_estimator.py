@@ -161,12 +161,13 @@ class NBEATSEstimator(PyTorchEstimator):
         dequantize : bool = False,
         flow_type : str = 'MAF',
 
+        test_split_sampler  = None,
         split_offset : int = 0,
         pick_incomplete: bool = False,
         lags_seq: Optional[List[int]] = None,
         time_features: Optional[List[TimeFeature]] = None,
 
-        test_split_sampler  = None,
+        
         **kwargs,
     ) -> None:
         super().__init__(trainer=trainer, **kwargs)

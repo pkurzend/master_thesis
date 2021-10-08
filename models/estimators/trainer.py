@@ -167,7 +167,7 @@ class Trainer(Trainer):
 
                             output_val = net(*inputs_val)
 
-                            if (self.return_validation_data_points > 0) and (len(val_data) <= self.return_validation_data_points):
+                            if (self.return_validation_data_points > 0) and (len(val_data) < self.return_validation_data_points):
                                 inputs_val = [v.detach().to('cpu') for v in inputs_val]
                                 val_data.append(inputs_val)
 

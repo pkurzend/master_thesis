@@ -165,6 +165,8 @@ class NBEATSEstimator(PyTorchEstimator):
         pick_incomplete: bool = False,
         lags_seq: Optional[List[int]] = None,
         time_features: Optional[List[TimeFeature]] = None,
+
+        test_split_sampler : Optional[InstanceSampler] = None,
         **kwargs,
     ) -> None:
         super().__init__(trainer=trainer, **kwargs)
@@ -272,6 +274,11 @@ class NBEATSEstimator(PyTorchEstimator):
             min_past=split_offset,
             min_future=prediction_length,
         )
+        
+        if test_split_sampler:
+            self.test_sampler = test_split_sampler
+        else:
+            self.test_sampler = TestSplitSampler()
 
         print('history_length, context_length ', self.history_length, self.context_length)
         print('lags ', self.lags_seq)
@@ -344,7 +351,7 @@ class NBEATSEstimator(PyTorchEstimator):
         instance_sampler = {
             "training": self.train_sampler,
             "validation": self.validation_sampler,
-            "test": TestSplitSampler(),
+            "test": self.test_sampler,
         }[mode]
 
         # samples instances returned from instance_sampler who returns the index of the point where time series is splittet into context and prediction window

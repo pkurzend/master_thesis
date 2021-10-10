@@ -161,7 +161,7 @@ class NBEATSEstimator(PyTorchEstimator):
         dequantize : bool = False,
         flow_type : str = 'MAF',
 
-        hugo_anton  = None,
+        test_sampler = 'hallo',
         split_offset : int = 0,
         pick_incomplete: bool = False,
         lags_seq: Optional[List[int]] = None,
@@ -174,7 +174,7 @@ class NBEATSEstimator(PyTorchEstimator):
 
 
         # self.input_dim = input_dim if input_dim is not None else target_dim
-
+        print(test_sampler)
         self.loss_function = loss_function
         self.block = block
         self.stacks=stacks
@@ -275,11 +275,11 @@ class NBEATSEstimator(PyTorchEstimator):
             min_past=split_offset,
             min_future=prediction_length,
         )
-        
-        if hugo_anton:
-            self.test_sampler = hugo_anton
-        else:
-            self.test_sampler = TestSplitSampler()
+        self.test_sampler = TestSplitSampler()
+        # if test_sampler:
+        #     self.test_sampler = test_sampler
+        # else:
+        #     self.test_sampler = TestSplitSampler()
 
         print('history_length, context_length ', self.history_length, self.context_length)
         print('lags ', self.lags_seq)
@@ -465,8 +465,8 @@ class NBEATSEstimator(PyTorchEstimator):
 
 
 class NBEATSFlowEstimator(NBEATSEstimator):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
      
     def create_training_network(self, device: torch.device) -> NBEATSFlowTrainingNetwork:
         print('CREATING FLOW TRAINING NETWORK')

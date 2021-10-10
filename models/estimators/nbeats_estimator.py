@@ -277,6 +277,7 @@ class NBEATSEstimator(PyTorchEstimator):
         )
         
         if test_sampler:
+            print('using own test sampler')
             self.test_sampler = test_sampler
         else:
             self.test_sampler = TestSplitSampler()

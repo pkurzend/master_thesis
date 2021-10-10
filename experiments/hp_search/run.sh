@@ -6,9 +6,9 @@
 #SBATCH --mail-user=kurzendo@uni-hildesheim.de
 
 # ## FOR GPU USE:
-#SBATCH --partition=TEST
+#SBATCH --partition=STUD
 ##SBATCH --gres=gpu:1
-#SBATCH--gpus=1
+#SBATCH--gpus=2
 
 
 
@@ -27,4 +27,4 @@ export LD_LIBRARY_PATH
 source activate thesis
 
 ## Run the script
-srun python main_test.py $1 $2 $3 $4 $5 $6 $7 $8 $9
+srun python main.py $1 $2 $3 $4 $5 $6 $7 $8 $9

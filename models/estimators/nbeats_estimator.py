@@ -161,7 +161,7 @@ class NBEATSEstimator(PyTorchEstimator):
         dequantize : bool = False,
         flow_type : str = 'MAF',
 
-        test_sampler = 'hallo',
+        test_sampler = None,
         split_offset : int = 0,
         pick_incomplete: bool = False,
         lags_seq: Optional[List[int]] = None,
@@ -275,11 +275,11 @@ class NBEATSEstimator(PyTorchEstimator):
             min_past=split_offset,
             min_future=prediction_length,
         )
-        self.test_sampler = TestSplitSampler()
-        # if test_sampler:
-        #     self.test_sampler = test_sampler
-        # else:
-        #     self.test_sampler = TestSplitSampler()
+        
+        if test_sampler:
+            self.test_sampler = test_sampler
+        else:
+            self.test_sampler = TestSplitSampler()
 
         print('history_length, context_length ', self.history_length, self.context_length)
         print('lags ', self.lags_seq)

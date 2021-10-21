@@ -121,6 +121,36 @@ class SeasonalityBasis(torch.nn.Module):
 
 
 
+class MultivariateBasis(torch.nn.Module):
+    """
+    Generic basis function.
+    """
+    def __init__(self, input_dim,  backcast_size: int, forecast_size: int):
+        super().__init__()
+        self.backcast_size = backcast_size
+        self.forecast_size = forecast_size
+        self.input_dim = input_dim
+
+
+        # (N, S+T, E) --> (N, S+T, E)
+        self.basis_layer = torch.nn.Linear(in_features=self.input_dim, out_features=self.input_dim) 
+
+    def forward(self, theta: torch.Tensor):
+       # @theta: shape (N, E, theta_size) = (N, E, S+T)
+       # @return: backcast: (N, E, S), forecast: (N, E, T)
+
+       x = theta
+       x = self.basis_layer(x.permute(0, 2, 1))
+       x = x.permute(0, 2, 1)
+       backcast, forecast = x[:, :, :self.backcast_size], x[:, :, -self.forecast_size:]
+
+       return backcast, forecast
+
+
+
+
+
+
 class ExogenousBasisInterpretable(nn.Module):
     def __init__(self):
         super().__init__()

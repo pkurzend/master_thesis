@@ -890,7 +890,7 @@ class ConvNBeatsBlock(NBeatsBlockBase):
         
         padding = 0
         dilation = 1 
-        kernel_size = 3
+        kernel_size = 9
         stride = 1
         
 
@@ -976,7 +976,7 @@ class LinearConvNBeatsBlock(NBeatsBlockBase):
         
         self.padding = 0
         self.dilation = 1 
-        self.kernel_size = 3
+        self.kernel_size = 9
         self.stride = 1
 
         # linear: (N, S, E) --> (N, S, E_small) 
@@ -986,7 +986,8 @@ class LinearConvNBeatsBlock(NBeatsBlockBase):
         # cnn layer: (N, C_in, L) corresponds to (N, E_small, S)
         # cnn: (N, E_small, S) --> (N, E_small, S_out) 
         cnn_layers = []
-
+        
+        # kernel is (out_channels, in_channels, kernel_size) source: variable section bottom https://pytorch.org/docs/stable/generated/torch.nn.Conv1d.html#torch.nn.Conv1d
         cnn_layers.append(nn.Conv1d(in_channels=self.layer_size, 
                                     out_channels=self.layer_size, 
                                     kernel_size=self.kernel_size, 

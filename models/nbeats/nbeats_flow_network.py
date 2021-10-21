@@ -63,6 +63,7 @@ class NBEATSFlowTrainingNetwork(nn.Module):
                  
                   # parameters for interpretable verions
                   interpretable : bool = False,
+                  multivariate_stacks : int = 0,
                   degree_of_polynomial : int = 3,
                   trend_layer_size : int = 256,
                   seasonality_layer_size : int = 2048,
@@ -92,6 +93,7 @@ class NBEATSFlowTrainingNetwork(nn.Module):
         self.flow_type = flow_type
 
         self.interpretable = interpretable
+        self.multivariate_stacks = multivariate_stacks
         self.degree_of_polynomial=degree_of_polynomial
         self.trend_layer_size=trend_layer_size
         self.seasonality_layer_size=seasonality_layer_size 
@@ -139,6 +141,7 @@ class NBEATSFlowTrainingNetwork(nn.Module):
                                            dropout=dropout,
                                            use_dropout_layer=use_dropout_layer,
                                            interpretable=interpretable,
+                                           multivariate_stacks=self.multivariate_stacks,
                                            degree_of_polynomial=degree_of_polynomial,
                                            trend_layer_size=trend_layer_size,
                                            seasonality_layer_size=seasonality_layer_size,

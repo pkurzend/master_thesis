@@ -128,7 +128,8 @@ class Trainer(Trainer):
         else:
             best_model_file_name = str(uuid.uuid4())+'best-model.pt'
 
-
+        torch.save(net.state_dict(), best_model_file_name)
+        
         nan_loss = False
 
         # store losses
@@ -236,15 +237,17 @@ class Trainer(Trainer):
                     if self.num_batches_per_epoch == batch_no:
                         break
 
-                # save best model:
-                if validation_iter is not None:
-                    if avg_epoch_loss_val / self.num_batches_per_epoch < best_loss:
-                        torch.save(net.state_dict(), best_model_file_name)
-                        best_loss = avg_epoch_loss_val / self.num_batches_per_epoch
-                else:
-                    if avg_epoch_loss / self.num_batches_per_epoch < best_loss:
-                        torch.save(net.state_dict(), best_model_file_name)
-                        best_loss = avg_epoch_loss / self.num_batches_per_epoch
+            # save best model:
+            if validation_iter is not None:
+                if avg_epoch_loss_val / self.num_batches_per_epoch < best_loss:
+                    print('saving model')
+                    torch.save(net.state_dict(), best_model_file_name)
+                    best_loss = avg_epoch_loss_val / self.num_batches_per_epoch
+            else:
+                if avg_epoch_loss / self.num_batches_per_epoch < best_loss:
+                    print('saving model')
+                    torch.save(net.state_dict(), best_model_file_name)
+                    best_loss = avg_epoch_loss / self.num_batches_per_epoch
 
             # mark epoch end time and log time cost of current epoch
             toc = time.time()

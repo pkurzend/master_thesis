@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .basis_functions import GenericBasis, TrendBasis, SeasonalityBasis, ExogenousBasisInterpretable
+from .basis_functions import GenericBasis, TrendBasis, SeasonalityBasis, MultivariateBasis, ExogenousBasisInterpretable
 from .blocks import NBeatsBlock, MultivariateNBeatsBlock, TimeAttentionNBeatsBlock, FeatureAttentionNBeatsBlock
 from .blocks import SimpleNBeatsBlock, LinearNBeatsBlock, LinearAttentionNBeatsBlock, LinearTransformerEncoderNBeatsBlock, LinearConvNBeatsBlock
 
@@ -80,11 +80,163 @@ class NBeats(torch.nn.Module):
         return forecast.transpose(1, 2) # (N,E,T) --> (N, T, E)
 
 
-        
+
+
+
+
 
 
 
 def generate_model(input_size: int, 
+            output_size: int, 
+            input_dim: int,
+            output_dim = None,
+            stack_features_along_time=False,
+            stacks: int=30, # number of generic blocks
+            interpretable: bool = False,
+            multivariate_stacks : int = 0,
+            linear_layers: int=4, 
+            layer_size: int=512, 
+            block : nn.Module = NBeatsBlock,  
+            attention_layers : int=1, 
+            attention_embedding_size : int=512, 
+            attention_heads : int = 1,
+            positional_encoding : bool = True,                                            
+            dropout=0.1,
+            use_dropout_layer=False,
+
+            # parameters for interpretable verions
+            degree_of_polynomial : int = 3,
+            trend_layer_size : int = 256,
+            seasonality_layer_size : int = 2048,
+            num_of_harmonics : int = 1,
+
+            ):
+    """
+    Create N-BEATS generic model.
+    """
+    print(F'NBEATS using {block} blocks')
+    if not interpretable:
+        blocks = torch.nn.ModuleList([block(   input_size=input_size,
+                                                    input_dim=input_dim,
+                                                    output_dim=output_dim,
+                                                    theta_size=input_size + output_size,
+                                                    basis_function=GenericBasis(backcast_size=input_size,
+                                                                                forecast_size=output_size),
+                                                    linear_layers=linear_layers,
+                                                    layer_size=layer_size,
+                                                    attention_layers=attention_layers,
+                                                    attention_embedding_size=attention_embedding_size,
+                                                    attention_heads=attention_heads,
+                                                    positional_encoding=positional_encoding,
+                                                    dropout=dropout,
+                                                    use_dropout_layer=use_dropout_layer
+                                                  )
+                                      for _ in range(stacks)]
+                                    + [block(   input_size=input_size,
+                                                    input_dim=input_dim,
+                                                    output_dim=output_dim,
+                                                    theta_size=input_size + output_size,
+                                                    basis_function=MultivariateBasis(input_dim=input_dim, backcast_size=input_size,
+                                                                                forecast_size=output_size),
+                                                    linear_layers=linear_layers,
+                                                    layer_size=layer_size,
+                                                    attention_layers=attention_layers,
+                                                    attention_embedding_size=attention_embedding_size,
+                                                    attention_heads=attention_heads,
+                                                    positional_encoding=positional_encoding,
+                                                    dropout=dropout,
+                                                    use_dropout_layer=use_dropout_layer
+                                                  )
+                                      for _ in range(multivariate_stacks)])
+    else: # interpretable
+        assert stacks % 2 == 0, 'in interpretable mode, stacks must be divisible by 2 since there will be stacks // 2 trend blocks and stacks//2 seasonality blocks'
+        # in interpretable version, weights within one stack are shared
+
+
+
+        trend_block = block(input_size=input_size,
+                            input_dim=input_dim,
+                            output_dim=output_dim,
+                            theta_size=2 * (degree_of_polynomial + 1),
+                            basis_function=TrendBasis(degree_of_polynomial=degree_of_polynomial,
+                                                        backcast_size=input_size,
+                                                        forecast_size=output_size),
+                            linear_layers=linear_layers,
+                            layer_size=trend_layer_size,
+                            attention_layers=attention_layers,
+                            attention_embedding_size=attention_embedding_size,
+                            attention_heads=attention_heads,
+                            positional_encoding=positional_encoding,
+                            dropout=dropout,
+                            use_dropout_layer=use_dropout_layer
+                          )
+        
+        seasonality_block = block(  input_size=input_size,
+                                    input_dim=input_dim,
+                                    output_dim=output_dim,
+                                    theta_size=4 * int(
+                                        np.ceil(num_of_harmonics / 2 * output_size) - (num_of_harmonics - 1)),
+                                    basis_function=SeasonalityBasis(harmonics=num_of_harmonics,
+                                                                    backcast_size=input_size,
+                                                                    forecast_size=output_size),
+                                    linear_layers=linear_layers,
+                                    layer_size=seasonality_layer_size,
+                                    attention_layers=attention_layers,
+                                    attention_embedding_size=attention_embedding_size,
+                                    attention_heads=attention_heads,
+                                    positional_encoding=positional_encoding,
+                                    dropout=dropout,
+                                    use_dropout_layer=use_dropout_layer
+                                  )
+        
+        multivariate_block = block(   input_size=input_size,
+                                                    input_dim=input_dim,
+                                                    output_dim=output_dim,
+                                                    theta_size=input_size + output_size,
+                                                    basis_function=MultivariateBasis(input_dim=input_dim, backcast_size=input_size,
+                                                                                forecast_size=output_size),
+                                                    linear_layers=linear_layers,
+                                                    layer_size=layer_size,
+                                                    attention_layers=attention_layers,
+                                                    attention_embedding_size=attention_embedding_size,
+                                                    attention_heads=attention_heads,
+                                                    positional_encoding=positional_encoding,
+                                                    dropout=dropout,
+                                                    use_dropout_layer=use_dropout_layer
+                                                  )
+
+        blocks =  torch.nn.ModuleList(
+            [trend_block for _ in range(stacks//2)] + [seasonality_block for _ in range(stacks//2)] + [multivariate_block for _ in range(multivariate_stacks)])
+
+    return NBeats(output_dim=output_dim, stack_features_along_time=stack_features_along_time, blocks=blocks)
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def generate_model_old(input_size: int, 
             output_size: int, 
             input_dim: int,
             output_dim = None,

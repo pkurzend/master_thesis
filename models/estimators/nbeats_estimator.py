@@ -149,6 +149,7 @@ class NBEATSEstimator(PyTorchEstimator):
 
         # parameters for interpretable verions
         interpretable : bool = False,
+        multivariate_stacks : int = 0,
         degree_of_polynomial : int = 3,
         trend_layer_size : int = 256,
         seasonality_layer_size : int = 2048,
@@ -191,6 +192,7 @@ class NBEATSEstimator(PyTorchEstimator):
         
         # parameters for interpretable model, not used in generic model
         self.interpretable=interpretable
+        self.multivariate_stacks = multivariate_stacks
         self.degree_of_polynomial=degree_of_polynomial
         self.trend_layer_size=trend_layer_size
         self.seasonality_layer_size=seasonality_layer_size 
@@ -401,6 +403,7 @@ class NBEATSEstimator(PyTorchEstimator):
             use_dropout_layer=self.use_dropout_layer,
 
             interpretable=self.interpretable,
+            multivariate_stacks = self.multivariate_stacks,
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
@@ -440,6 +443,7 @@ class NBEATSEstimator(PyTorchEstimator):
             use_dropout_layer=self.use_dropout_layer,
 
             interpretable=self.interpretable,
+            multivariate_stacks = self.multivariate_stacks,
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
@@ -499,6 +503,7 @@ class NBEATSFlowEstimator(NBEATSEstimator):
             flow_type = self.flow_type,
 
             interpretable=self.interpretable,
+            multivariate_stacks = self.multivariate_stacks,
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
@@ -543,6 +548,7 @@ class NBEATSFlowEstimator(NBEATSEstimator):
             flow_type = self.flow_type,
 
             interpretable=self.interpretable,
+            multivariate_stacks = self.multivariate_stacks,
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,

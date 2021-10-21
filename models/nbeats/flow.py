@@ -8,6 +8,9 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def create_masks(
     input_size, hidden_size, n_hidden, input_order="sequential", input_degrees=None
 ):
@@ -304,6 +307,8 @@ class MADE(nn.Module):
         if torch.isnan(u).any() or torch.isinf(u).any():
             print('nans or inf: ', u)
             nan_tensor = torch.ones(*log_abs_det_jacobian.shape) * np.nan
+            nan_tensor = nan_tensor.cuda()
+            print(nan_tensor)
             return torch.sum(nan_tensor, dim=-1)
         return torch.sum(self.base_dist.log_prob(u) + log_abs_det_jacobian, dim=-1)
 
@@ -349,6 +354,7 @@ class Flow(nn.Module):
         if torch.isnan(u).any() or torch.isinf(u).any():
             print('nans or inf: ', u)
             nan_tensor = torch.ones(*sum_log_abs_det_jacobians.shape) * np.nan
+            nan_tensor = nan_tensor.cuda()
             return torch.sum(nan_tensor, dim=-1)
         return torch.sum(self.base_dist.log_prob(u) + sum_log_abs_det_jacobians, dim=-1)
         

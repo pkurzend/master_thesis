@@ -60,6 +60,7 @@ class NBEATSTrainingNetwork(nn.Module):
                   trend_layer_size : int = 256,
                   seasonality_layer_size : int = 2048,
                   num_of_harmonics : int = 1,
+                  multivariate_nbeats_like_darts : bool = False,
                  
             ):
       
@@ -85,7 +86,7 @@ class NBEATSTrainingNetwork(nn.Module):
         self.seasonality_layer_size=seasonality_layer_size 
         self.num_of_harmonics=num_of_harmonics 
 
-        
+        self.multivariate_nbeats_like_darts  = multivariate_nbeats_like_darts
 
 
         self.periodicity = get_seasonality(self.freq)
@@ -131,7 +132,8 @@ class NBEATSTrainingNetwork(nn.Module):
                                            degree_of_polynomial=degree_of_polynomial,
                                            trend_layer_size=trend_layer_size,
                                            seasonality_layer_size=seasonality_layer_size,
-                                           num_of_harmonics=num_of_harmonics
+                                           num_of_harmonics=num_of_harmonics,
+                                           multivariate_nbeats_like_darts  = multivariate_nbeats_like_darts
                                            )
 
         self.number_of_parameters = count_parameters(self.nb_model)

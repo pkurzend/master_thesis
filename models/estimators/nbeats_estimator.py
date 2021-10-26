@@ -168,6 +168,8 @@ class NBEATSEstimator(PyTorchEstimator):
         lags_seq: Optional[List[int]] = None,
         time_features: Optional[List[TimeFeature]] = None,
 
+        multivariate_nbeats_like_darts : bool = False,
+
         
         **kwargs,
     ) -> None:
@@ -197,6 +199,8 @@ class NBEATSEstimator(PyTorchEstimator):
         self.trend_layer_size=trend_layer_size
         self.seasonality_layer_size=seasonality_layer_size 
         self.num_of_harmonics=num_of_harmonics 
+
+        self.multivariate_nbeats_like_darts = multivariate_nbeats_like_darts
 
         # flow parameters, only relevant when using flow (NBEATSEFlowstimator)
         self.dequantize = dequantize
@@ -408,6 +412,8 @@ class NBEATSEstimator(PyTorchEstimator):
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
             num_of_harmonics=self.num_of_harmonics,
+
+            multivariate_nbeats_like_darts=self.multivariate_nbeats_like_darts,
           
         ).to(device)
             
@@ -447,7 +453,9 @@ class NBEATSEstimator(PyTorchEstimator):
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
-            num_of_harmonics=self.num_of_harmonics
+            num_of_harmonics=self.num_of_harmonics,
+
+            multivariate_nbeats_like_darts=self.multivariate_nbeats_like_darts,
         ).to(device)
 
         copy_parameters(trained_network, prediction_network)
@@ -508,6 +516,8 @@ class NBEATSFlowEstimator(NBEATSEstimator):
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
             num_of_harmonics=self.num_of_harmonics,
+
+            multivariate_nbeats_like_darts=self.multivariate_nbeats_like_darts,
           
         ).to(device)
             
@@ -552,7 +562,9 @@ class NBEATSFlowEstimator(NBEATSEstimator):
             degree_of_polynomial=self.degree_of_polynomial,
             trend_layer_size=self.trend_layer_size,
             seasonality_layer_size=self.seasonality_layer_size,
-            num_of_harmonics=self.num_of_harmonics
+            num_of_harmonics=self.num_of_harmonics,
+
+            multivariate_nbeats_like_darts=self.multivariate_nbeats_like_darts,
         ).to(device)
 
         copy_parameters(trained_network, prediction_network)

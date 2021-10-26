@@ -9,7 +9,9 @@ print(len(files), 'files')
 
 baselines = {'electricity_nips': {'mse' : 180000, 'crps' : 0.051, 'crps_sum': 0.0207}, 
             'traffic_nips': {'mse' : 0.00049, 'crps' : 0.124, 'crps_sum': 0.056}, 
-            'solar_nips': {'mse' : 910, 'crps' : 0.365, 'crps_sum': 0.301}}
+            'solar_nips': {'mse' : 910, 'crps' : 0.365, 'crps_sum': 0.301},
+            'exchange_rate': {'mse' : 0.00017, 'crps' : 0.008, 'crps_sum': 0.005}
+            }
 results = {}
 for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate']:
     results[ds_name] = []

@@ -82,6 +82,66 @@ class NBeats(torch.nn.Module):
 
 
 
+class MultivariateNBeats(torch.nn.Module):
+    """
+    N-Beats Model.
+    """
+    def __init__(self, output_dim,  stack_features_along_time, blocks: torch.nn.ModuleList):
+        super().__init__()
+        self.blocks = blocks
+        self.output_dim=output_dim
+        self.stack_features_along_time=stack_features_along_time
+        self.first_batch = True
+
+
+
+
+
+
+    
+    def forward(self, x_ts : torch.Tensor, x_tf : torch.Tensor, x_s : torch.Tensor, pad_mask : torch.Tensor) -> torch.Tensor:
+        # @x_ts: time series inputs, shape: (N, S, E) = (batch_size, context_length, target_dim * n_lags) 
+        # @x_tf: time features inputs, shape: (N, S, n_features) = (batch_size, context_length, 4)
+        # @x_s: static time feature inputs, shape: (N, S, target_dim * embed_dim)  = (batch_size, context_length, target_dim * 1) 
+        # @pad_mask: padding maks, shape: (N, S) = (N, context_length)
+
+        # @retrun: shape: (N, T, E)
+
+
+
+        x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
+        N, E, S = x.shape
+
+
+        # flatten input:
+        x = x.reshape(x.shape[0], -1) # (N, S*E)
+    
+
+        
+
+        # input_mask = torch.ones(x.shape).to(device)
+        input_mask = pad_mask.unsqueeze(1).expand(-1, x.shape[1], -1)# (N, E, S)
+        input_mask = input_mask.reshape(x.shape[0], -1) # (N, S*E)
+        
+
+        # flip: reverse order in given axis: we want to
+        # reverse time series order (last dimension) 
+        residuals = x.flip(dims=(-1,)) # shape:  (N, S*E)
+        
+
+        # forecast = x[:, :self.output_dim, -1:]
+        forecast = x[:, :self.output_dim, -1:]*0 # (N, E, 1) 
+
+        for i, block in enumerate(self.blocks):
+            backcast, block_forecast = block(residuals) # forecast: (N, E*T), backcast: (N,E*S)
+            #print(block_forecast)
+            
+            residuals = (residuals - backcast) * input_mask
+            # forecast = forecast + block_forecast[:, :self.output_dim, :]
+            forecast = forecast + block_forecast.reshape(x.shape[0], self.output_dim, -1) # (N,E,T)
+        return forecast.transpose(1, 2) # (N,E,T) --> (N, T, E)
+
+
 
 
 
@@ -110,6 +170,8 @@ def generate_model(input_size: int,
             trend_layer_size : int = 256,
             seasonality_layer_size : int = 2048,
             num_of_harmonics : int = 1,
+
+            multivariate_nbeats_like_darts : bool = False,
 
             ):
     """
@@ -209,7 +271,12 @@ def generate_model(input_size: int,
         blocks =  torch.nn.ModuleList(
             [trend_block for _ in range(stacks//2)] + [seasonality_block for _ in range(stacks//2)] + [multivariate_block for _ in range(multivariate_stacks)])
 
-    return NBeats(output_dim=output_dim, stack_features_along_time=stack_features_along_time, blocks=blocks)
+    if multivariate_nbeats_like_darts and not interpretable:
+      print('using multivariate nbeats model like in DARTS library')
+      model = MultivariateNBeats(output_dim=output_dim, stack_features_along_time=stack_features_along_time, blocks=blocks)
+    else:
+      model = NBeats(output_dim=output_dim, stack_features_along_time=stack_features_along_time, blocks=blocks)
+    return model
 
 
 

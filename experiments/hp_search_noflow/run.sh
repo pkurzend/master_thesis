@@ -27,4 +27,4 @@ export LD_LIBRARY_PATH
 source activate thesis
 
 ## Run the script
-srun python main.py $1 $2 $3 $4 $5 $6 $7 $8 $9
+srun python main.py $1 $2 $3 $4 $5 $6 $7 $8

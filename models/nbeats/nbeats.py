@@ -112,6 +112,9 @@ class MultivariateNBeats(torch.nn.Module):
         x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
         N, E, S = x.shape
 
+        # forecast = x[:, :self.output_dim, -1:]
+        forecast = x[:, :self.output_dim, -1:]*0 # (N, E, 1) 
+
 
         # flatten input:
         x = x.reshape(x.shape[0], -1) # (N, S*E)
@@ -129,8 +132,7 @@ class MultivariateNBeats(torch.nn.Module):
         residuals = x.flip(dims=(-1,)) # shape:  (N, S*E)
         
 
-        # forecast = x[:, :self.output_dim, -1:]
-        forecast = x[:, :self.output_dim, -1:]*0 # (N, E, 1) 
+
 
         for i, block in enumerate(self.blocks):
             backcast, block_forecast = block(residuals) # forecast: (N, E*T), backcast: (N,E*S)

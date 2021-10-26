@@ -130,12 +130,14 @@ class MultivariateNBeats(torch.nn.Module):
         # flip: reverse order in given axis: we want to
         # reverse time series order (last dimension) 
         residuals = x.flip(dims=(-1,)) # shape:  (N, S*E)
+        print('CP0 ', residuals.shape, input_mask.shape)
         
 
 
 
         for i, block in enumerate(self.blocks):
             backcast, block_forecast = block(residuals) # forecast: (N, E*T), backcast: (N,E*S)
+            print('CP1 ', backcast.shape, block_forecast.shape)
             #print(block_forecast)
             
             residuals = (residuals - backcast) * input_mask

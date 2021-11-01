@@ -566,6 +566,8 @@ class NBEATSPredictionNetwork(NBEATSTrainingNetwork):
         # forecast
         forecast = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
         
+        forecast = forecast * scale
+        
         return forecast.unsqueeze(1)
 
 

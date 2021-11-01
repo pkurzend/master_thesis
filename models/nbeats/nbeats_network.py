@@ -474,7 +474,8 @@ class NBEATSTrainingNetwork(nn.Module):
         forecast = self.nb_model.forward(x_ts=time_series_inputs, x_tf=time_feat_inputs, x_s=static_inputs, pad_mask=pad_mask) #shape: (N, T, E)
 
 
-  
+        # this was added on 1.11.2021
+        forecast = forecast * scale
 
 
 
@@ -491,7 +492,11 @@ class NBEATSTrainingNetwork(nn.Module):
             loss = self.mape_loss(forecast, future_target)
         elif self.loss_function == "MASE":
             loss = self.mase_loss(
-                forecast, future_target, past_target / scale, self.periodicity
+                # forecast, future_target, past_target / scale, self.periodicity
+
+                # as of 1.11.2021 this was changed and past target is no longer scaled
+                # to be on the same scale as forecast and future_targets
+                forecast, future_target, past_target, self.periodicity
             )
         elif self.loss_function == "MSE":
             loss = torch.nn.MSELoss()(forecast, future_target)

@@ -109,15 +109,20 @@ class MultivariateNBeats(torch.nn.Module):
 
 
 
-        x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
-        N, E, S = x.shape
+        # x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
+        x = x_ts
+        N, S, E = x.shape
 
         # forecast = x[:, :self.output_dim, -1:]
         forecast = x[:, :self.output_dim, -1:]*0 # (N, E, 1) 
+        print('x.shape ', x.shape)
+        print('forecast.shape ', forecast.shape)
+        
 
 
         # flatten input:
         x = x.reshape(x.shape[0], -1) # (N, S*E)
+        print('x_reshaped.shape ', x.shape)
     
 
         
@@ -125,19 +130,20 @@ class MultivariateNBeats(torch.nn.Module):
         # input_mask = torch.ones(x.shape).to(device)
         input_mask = pad_mask.unsqueeze(1).expand(-1, x.shape[1], -1)# (N, E, S)
         input_mask = input_mask.reshape(x.shape[0], -1) # (N, S*E)
+        print('input_mask.shape ', input_mask.shape)
         
 
         # flip: reverse order in given axis: we want to
         # reverse time series order (last dimension) 
         residuals = x.flip(dims=(-1,)) # shape:  (N, S*E)
-        print('CP0 ', residuals.shape, input_mask.shape)
+        print('residuals.shape ', residuals.shape)
         
 
 
 
         for i, block in enumerate(self.blocks):
             backcast, block_forecast = block(residuals) # forecast: (N, E*T), backcast: (N,E*S)
-            print('CP1 ', backcast.shape, block_forecast.shape)
+            print('backcast and forecast shape ', backcast.shape, block_forecast.shape)
             #print(block_forecast)
             
             residuals = (residuals - backcast) * input_mask

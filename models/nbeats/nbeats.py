@@ -128,7 +128,7 @@ class MultivariateNBeats(torch.nn.Module):
         
 
         # input_mask = torch.ones(x.shape).to(device)
-        input_mask = pad_mask.unsqueeze(1).expand(-1, x.shape[1], -1)# (N, E, S)
+        input_mask = pad_mask.unsqueeze(1).expand(-1, x.shape[2], -1)# (N, E, S)
         input_mask = input_mask.reshape(x.shape[0], -1) # (N, S*E)
         print('input_mask.shape ', input_mask.shape)
         

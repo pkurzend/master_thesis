@@ -120,15 +120,19 @@ class MultivariateNBeats(torch.nn.Module):
         
 
 
-        # flatten input:
-        x = x.reshape(x.shape[0], -1) # (N, S*E)
-        print('x_reshaped.shape ', x.shape)
+
     
 
         
 
         # input_mask = torch.ones(x.shape).to(device)
         input_mask = pad_mask.unsqueeze(1).expand(-1, x.shape[2], -1)# (N, E, S)
+
+        # flatten input:
+        x = x.reshape(x.shape[0], -1) # (N, S*E)
+        print('x_reshaped.shape ', x.shape)
+
+        # flatten input_mask
         input_mask = input_mask.reshape(x.shape[0], -1) # (N, S*E)
         print('input_mask.shape ', input_mask.shape)
         
@@ -188,6 +192,23 @@ def generate_model(input_size: int,
     Create N-BEATS generic model.
     """
     print(F'NBEATS using {block} blocks')
+
+    if multivariate_nbeats_like_darts:
+        a = 2
+        # input x will be of shape (N, S*D)
+        # output will be of shape (N, T*D)
+        # but backcast and forecast outouts are (N, *, S) nd (N, *, T)
+        # output has to be of shape (N, S*D) and (N, T*D)
+        # basis parameters should have layer_size (S+T)*D
+        # basis function has to be changes since it returns (N, E, S) or (N, E, T)
+
+        
+        block = NBeatsBlock
+
+        input_size = input_size * output_dim
+        output_size = output_size * output_dim
+
+
     if not interpretable:
         blocks = torch.nn.ModuleList([block(   input_size=input_size,
                                                     input_dim=input_dim,

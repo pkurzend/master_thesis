@@ -131,7 +131,7 @@ class MultivariateNBeats(torch.nn.Module):
 
 
         # forecast = x[:, :self.output_dim, -1:]
-        forecast = x[:, -1: , :0].squeeze() *0 # (N, 1) 
+        forecast = x[:, -1:] *0 # (N, 1) 
         print('forecast.shape ', forecast.shape)
         
 

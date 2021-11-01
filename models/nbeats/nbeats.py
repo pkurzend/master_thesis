@@ -107,14 +107,15 @@ class MultivariateNBeats(torch.nn.Module):
 
         # @retrun: shape: (N, T, E)
 
-
+        print('output_dim ', self.output_dim)
+        print('x_ts.shape ', x_ts.shape)
 
         # x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
-        x = x_ts
+        x = x_ts[:, :, :self.output_dim] # (N, S, E)
         N, S, E = x.shape
 
         # forecast = x[:, :self.output_dim, -1:]
-        forecast = x[:, :self.output_dim, -1:]*0 # (N, E, 1) 
+        forecast = x[:, -1: , :self.output_dim]*0 # (N, S, E) 
         print('x.shape ', x.shape)
         print('forecast.shape ', forecast.shape)
         
@@ -205,7 +206,7 @@ def generate_model(input_size: int,
         
         block = NBeatsBlock
 
-        input_size = input_size * input_dim
+        input_size = input_size * output_dim
         output_size = output_size * output_dim
 
 

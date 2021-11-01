@@ -1,7 +1,7 @@
 import pickle 
 import matplotlib.pyplot as plt 
 import pandas as pd
-
+import numpy as np 
 pd.set_option('display.max_columns', 20)
 import os 
 
@@ -61,24 +61,60 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate
     columns = {
         **{param : [] for param in hyperparams},
         **{m : [] for m in metrics},
-        'n_params' : []
+        'n_params' : [],
+        'model_id' : [],
     }
 
 
 
-    for item in sorted_results[:5]:
+    for item in sorted_results:
         hp = item['hyperparameters']
+        
         # print('best model hp: ', item['hyperparameters'])
         for key, value in hp.items():
-            if key in columns:
+            if key in hyperparams:
+                
                 columns[key].append(value)
 
         for m in metrics:
             columns[m].append(item['metrics_val'][m])
 
-        columns['n_params'] = item['number_of_parameters']
+        columns['n_params'].append(item['number_of_parameters'])
+        columns['model_id'].append(item['model_id'])
         
     df = pd.DataFrame(columns)
-    print(df)
+    print(df.shape)
+    print(df.head(5))
+
+    print('model_ids ', df['model_id'].unique())
+
+    for model_id in df['model_id'].unique():
+        df_temp = df.loc[df['model_id'] == model_id]
+        print('has nans or infs ', df_temp.isnull().values.any(), df_temp.isin([np.inf, -np.inf]).values.any())
+        print()
+
+        # data = {
+        #     'mean_mse'
+        #     'mean_crps'
+        #     'mean_crps_sum'
+        #     'std_mse'
+        #     'std_crps'
+        #     'std_crps_sum'
+        # }
+
+        # agg_df = pd.DataFrame(data)
+        
+        print('mean mse:      ', format(df_temp['mse'].mean(), '.8f'),      'std mse:      ', format(df_temp['mse'].std(), '.8f'),      'best mse:      ', format(df_temp['mse'].min(), '.8f'))
+        print('mean crps:     ', format(df_temp['crps'].mean(), '.8f'),     'std crps:     ', format(df_temp['crps'].std(), '.8f'),     'best crps:     ', format(df_temp['crps'].min(), '.8f'))
+        print('mean crps_sum: ', format(df_temp['crps_sum'].mean(), '.8f'), 'std crps_sum: ', format(df_temp['crps_sum'].std(), '.8f'), 'best crps_sum: ', format(df_temp['crps_sum'].min(), '.8f'))
+        print(f"BASELINE mse: {baselines[ds_name]['mse']} \tcrps: {baselines[ds_name]['crps']} \tcrps_sum: {baselines[ds_name]['crps_sum']}")
+
+        print()
+
+
+
+
+
+
     
 

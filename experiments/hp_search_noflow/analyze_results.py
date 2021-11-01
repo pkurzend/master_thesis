@@ -1,8 +1,24 @@
 import pickle 
 import matplotlib.pyplot as plt 
+import pandas as pd
 
+pd.set_option('display.max_columns', 20)
 
 import os 
+
+
+metrics = ['mse', 'crps', 'crps_sum']
+hyperparams = [
+        'learning_rate',
+        'batch_size',
+        'weight_decay',
+        'blocks',
+        'stacks',
+        'layer_size',
+
+]
+
+
 
 files = os.listdir('gridresults/')
 print(len(files), 'files')
@@ -39,6 +55,31 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate
     print(f"BASELINE: mse: {baselines[ds_name]['mse']} \tcrps: {baselines[ds_name]['crps']} \tcrps_sum: {baselines[ds_name]['crps_sum']}")
     print()
 
-    for item in sorted_results[:1]:
-        print('best model hp: ', item['hyperparameters'])
+
     
+
+
+    columns = {
+        **{param : [] for param in hyperparams},
+        **{m : [] for m in metrics},
+        'n_params' : []
+    }
+
+
+
+    for item in sorted_results[:5]:
+        hp = item['hyperparameters']
+        # print('best model hp: ', item['hyperparameters'])
+        for key, value in hp.items():
+            if key in columns:
+                columns[key].append(value)
+
+        for m in metrics:
+            columns[m].append(item['metrics_val'][m])
+
+        columns['n_params'] = item['number_of_parameters']
+        
+    df = pd.DataFrame(columns)
+    print(df)
+    
+

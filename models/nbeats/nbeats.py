@@ -107,12 +107,12 @@ class MultivariateNBeats(torch.nn.Module):
 
         # @retrun: shape: (N, T, E)
 
-        print('output_dim ', self.output_dim)
-        print('x_ts.shape ', x_ts.shape)
+        # print('output_dim ', self.output_dim)
+        # print('x_ts.shape ', x_ts.shape)
 
         # x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
         x = x_ts[:, :, :self.output_dim] # (N, S, E)
-        print('x.shape ', x.shape)
+        # print('x.shape ', x.shape)
         N, S, E = x.shape
 
   
@@ -123,29 +123,29 @@ class MultivariateNBeats(torch.nn.Module):
 
         # flatten input:
         x = x.reshape(x.shape[0], -1) # (N, S*E)
-        print('x_reshaped.shape ', x.shape)
+        # print('x_reshaped.shape ', x.shape)
 
         # flatten input_mask
         input_mask = input_mask.reshape(x.shape[0], -1) # (N, S*E)
-        print('input_mask.shape ', input_mask.shape)
+        # print('input_mask.shape ', input_mask.shape)
 
 
         # forecast = x[:, :self.output_dim, -1:]
         forecast = x[:, -1:] *0 # (N, 1) 
-        print('forecast.shape ', forecast.shape)
+        # print('forecast.shape ', forecast.shape)
         
 
         # flip: reverse order in given axis: we want to
         # reverse time series order (last dimension) 
         residuals = x.flip(dims=(-1,)) # shape:  (N, S*E)
-        print('residuals.shape ', residuals.shape)
+        # print('residuals.shape ', residuals.shape)
         
 
 
 
         for i, block in enumerate(self.blocks):
             backcast, block_forecast = block(residuals) # forecast: (N, E*T), backcast: (N,E*S)
-            print('backcast and forecast shape ', backcast.shape, block_forecast.shape)
+            # print('backcast and forecast shape ', backcast.shape, block_forecast.shape)
             #print(block_forecast)
             
             residuals = (residuals - backcast) * input_mask

@@ -150,7 +150,8 @@ class MultivariateNBeats(torch.nn.Module):
             
             residuals = (residuals - backcast) * input_mask
             # forecast = forecast + block_forecast[:, :self.output_dim, :]
-            forecast = forecast + block_forecast.reshape(x.shape[0], self.output_dim, -1) # (N,E,T)
+            forecast = forecast + block_forecast #.reshape(x.shape[0], self.output_dim, -1) # (N,E,T)
+        forecast = forecast.reshape(forecast.shape[0], self.output_dim, -1)
         return forecast.transpose(1, 2) # (N,E,T) --> (N, T, E)
 
 

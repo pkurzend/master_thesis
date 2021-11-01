@@ -205,7 +205,7 @@ def generate_model(input_size: int,
         
         block = NBeatsBlock
 
-        input_size = input_size * output_dim
+        input_size = input_size * input_dim
         output_size = output_size * output_dim
 
 

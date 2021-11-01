@@ -112,19 +112,11 @@ class MultivariateNBeats(torch.nn.Module):
 
         # x =  torch.cat((x_ts, x_s, x_tf), dim=-1) # shape: (N, context_length, input_dim)
         x = x_ts[:, :, :self.output_dim] # (N, S, E)
+        print('x.shape ', x.shape)
         N, S, E = x.shape
 
-        # forecast = x[:, :self.output_dim, -1:]
-        forecast = x[:, -1: , :self.output_dim]*0 # (N, S, E) 
-        print('x.shape ', x.shape)
-        print('forecast.shape ', forecast.shape)
-        
-
-
-
-    
-
-        
+  
+       
 
         # input_mask = torch.ones(x.shape).to(device)
         input_mask = pad_mask.unsqueeze(1).expand(-1, x.shape[2], -1)# (N, E, S)
@@ -136,6 +128,11 @@ class MultivariateNBeats(torch.nn.Module):
         # flatten input_mask
         input_mask = input_mask.reshape(x.shape[0], -1) # (N, S*E)
         print('input_mask.shape ', input_mask.shape)
+
+
+        # forecast = x[:, :self.output_dim, -1:]
+        forecast = x[:, -1: , :0].squeeze() *0 # (N, 1) 
+        print('forecast.shape ', forecast.shape)
         
 
         # flip: reverse order in given axis: we want to

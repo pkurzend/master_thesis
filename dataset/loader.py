@@ -21,7 +21,7 @@ def load_dataset(name='traffic_nips', validation_set=True, train_pct=0.7):
     
     try:
         dataset = get_dataset(name, regenerate=False)
-    except FileNotFoundError:
+    except (FileNotFoundError, OSError):
         dataset = get_dataset(name, regenerate=True)
         
     print(dataset.train.__dict__)

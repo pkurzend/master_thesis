@@ -29,7 +29,7 @@ abord_after_one_job = False
 if cond != 'continue':
 	abord_after_one_job = True
 
-N_RUNS = 10
+N_RUNS = 20
 
 files = os.listdir('../gridresults/')
 print(len(files), 'files')
@@ -53,7 +53,7 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate
 	print(type(results), type(ls))
 	sorted_results = sorted(ls, key=lambda item: item['metrics_val']['mse'])
 
-	for model_id, item in enumerate(sorted_results[:3]): # for the 3 best run 20 runs to get valid results on test set
+	for model_id, item in enumerate(sorted_results[:1]): # for the 1 best run 20 runs to get valid results on test set
 		print(model_id)
 		hp = item['hyperparameters']
 
@@ -65,10 +65,12 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate
 		st = hp['stacks'] 
 		ls = hp['layer_size'] 
 
+		ah = hp['attention_heads'] 
+		aes = hp['attention_embedding_size'] 
 
 		for run_id in range(N_RUNS):
-			print('running job with command: ', F"sbatch run.sh {model_id} {run_id} {ds_name} {lr} {bs} {wd} {b} {st} {ls}")
-			os.system(F"sbatch run.sh {model_id} {run_id} {ds_name} {lr} {bs} {wd} {b} {st} {ls}")
+			print('running job with command: ', F"sbatch run.sh {model_id} {run_id} {ds_name} {lr} {bs} {wd} {b} {st} {ls} {ah} {aes}")
+			os.system(F"sbatch run.sh {model_id} {run_id} {ds_name} {lr} {bs} {wd} {b} {st} {ls} {ah} {aes}")
 
 			if abord_after_one_job:
 				sys.exit(0)

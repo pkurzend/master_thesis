@@ -79,7 +79,8 @@ hp_names = [
     ('stacks', int),
     ('layer_size', int),
     
-
+    ('attention_heads', int),
+    ('attention_embedding_size', int),
     
 
 ]
@@ -104,14 +105,15 @@ stacks = hp_dict['stacks']
 layer_size = hp_dict['layer_size']
 
 
-
+attention_heads = hp_dict['attention_heads']
+attention_embedding_size = hp_dict['attention_embedding_size']
 
 
 
 
 
 # hyperparameters not tuned
-max_learning_rate = 1e-4
+max_learning_rate = 1e-3
 hp_dict['max_learning_rate'] = max_learning_rate
 
 
@@ -124,6 +126,9 @@ hp_dict['num_batches_per_epoch'] = num_batches_per_epoch
 
 linear_layers = 0
 hp_dict['linear_layers'] = linear_layers
+
+attention_layers = 1
+hp_dict['attention_layers'] = attention_layers
 
 
 
@@ -184,13 +189,16 @@ estimator = NBEATSEstimator(
     freq=freq,
     split_offset=split_offset,
 
-    loss_function='MAPE',
+    loss_function='sMAPE',
     context_length=context_length,
     stack_features_along_time=stack_features_along_time,
     block=blocks,
     stacks=stacks,
     linear_layers=linear_layers,
     layer_size=layer_size,
+    attention_layers=attention_layers,
+    attention_embedding_size=attention_embedding_size,
+    attention_heads=attention_heads,
 
 
     positional_encoding=positional_encoding,

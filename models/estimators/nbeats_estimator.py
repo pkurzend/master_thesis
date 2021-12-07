@@ -94,12 +94,22 @@ class ExpectedNumInstanceSampler(ExpectedNumInstanceSampler):
         number of training examples generated per time series on average
     """
 
+    """
+    called like this for training set:
+            self.train_sampler = ExpectedNumInstanceSampler(
+            num_instances=1.0, # number of training examples generated per time series on average
+            min_past=self.history_length,
+            min_future=prediction_length,
+        )
+    
+    """
+
     num_instances: float
     total_length: int = 0
     n: int = 0
 
     def __call__(self, ts: np.ndarray) -> np.ndarray:
-        a, b = self._get_bounds(ts) # returns   (self.min_past,ts.shape[self.axis] - self.min_future,) = (history_length, prediction_length)
+        a, b = self._get_bounds(ts) # returns   (self.min_past,ts.shape[self.axis] - self.min_future,) = (history_length, ts.shape-prediction_length)
         # print('ExpectedNumInstanceSampler ab ', a, b)
         window_size = b - a + 1
 
@@ -109,6 +119,7 @@ class ExpectedNumInstanceSampler(ExpectedNumInstanceSampler):
 
         if window_size <= 0:
             return np.array([], dtype=int)
+            
 
         self.n += 1
         self.total_length += window_size

@@ -9,7 +9,7 @@ import sys
 sys.path.append('../../../')
 from models.utils import plot_learning_curves
 
-metrics = ['mse', 'crps', 'crps_sum']
+metrics = ['mse', 'crps', 'crps_sum', 'smape']
 hyperparams = [
         'learning_rate',
         'blocks',

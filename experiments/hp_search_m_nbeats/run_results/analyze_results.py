@@ -19,6 +19,8 @@ hyperparams = [
         # 'flow_type',
 ]
 
+dataset_names = ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate']
+
 gridresults_folder = 'gridresults/'
 
 files = os.listdir(gridresults_folder)
@@ -30,7 +32,7 @@ baselines = {'electricity_nips': {'mse' : 180000, 'crps' : 0.051, 'crps_sum': 0.
             'exchange_rate': {'mse' : 0.00017, 'crps' : 0.008, 'crps_sum': 0.005}
             }
 results = {}
-for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate']:
+for ds_name in dataset_names:
     results[ds_name] = []
 print(results)
 
@@ -43,8 +45,10 @@ for filename in files:
 
 mse_latex_table = {'Data Set' : []}
 
+losses_all_runs = {ds_name : [] for ds_name in dataset_names}
 
-for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate']:
+
+for ds_name in dataset_names:
     ls = results[ds_name]
     print('n runs ', len(ls))
     print(type(results), type(ls))
@@ -57,7 +61,7 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate
     print()
 
 
-    
+
 
 
     columns = {
@@ -71,6 +75,16 @@ for ds_name in ['electricity_nips', 'traffic_nips', 'solar_nips', 'exchange_rate
 
     for item in sorted_results:
         hp = item['hyperparameters']
+        
+
+        ########## plot learning curves ###########
+        if hp['blocks'] == 3: # transformer block
+            train_losses = item['losses']['train_epoch_losses']
+            
+        
+            losses_all_runs[ds_name].append(train_losses)
+
+        #############################################
         
         # print('best model hp: ', item['hyperparameters'])
         for key, value in hp.items():
@@ -142,7 +156,15 @@ print(mse_df.to_latex(index=False, escape=False))
 
 
 
+########## plot learning curves ###########
+print('number of learning curves for solar ', len(losses_all_runs['solar_nips']))
+
+for ds_name, losses in losses_all_runs.items():
+    losses = np.array(losses)
+    print(losses.shape)
+   
+    plot_learning_curves(losses, fname=str(f'{ds_name}_10runs_mnbeats_linear_transformer_block'))
 
 
-    
+#############################################
 

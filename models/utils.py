@@ -114,7 +114,7 @@ def plot_learning_curves(train_losses, val_losses=None, level='epoch', ylim=None
 
     
     # creates folders
-    folders = ['plots']
+    folders = ['plots', "plots/learning_curves"]
     for f in folders:
         try:
             os.makedirs(f)
@@ -126,7 +126,7 @@ def plot_learning_curves(train_losses, val_losses=None, level='epoch', ylim=None
         # only one learning curve, no standard dev
         n_epochs = train_losses.shape[0]
     elif len(train_losses.shape)==2:
-        n_epochs, n_runs = train_losses.shape
+        n_runs, n_epochs = train_losses.shape
 
     else:
         raise('Losses wrong shape')
@@ -153,14 +153,15 @@ def plot_learning_curves(train_losses, val_losses=None, level='epoch', ylim=None
 
     elif len(train_losses.shape)==2:
 
-        train_losses_mean = np.mean(train_losses, axis=1) 
-        train_losses_std = np.std(train_losses, axis=1)
+        train_losses_mean = np.mean(train_losses, axis=0) 
+        train_losses_std = np.std(train_losses, axis=0)
         if val_losses is not None:
-            val_losses_mean = np.mean(val_losses, axis=1)
-            val_losses_std = np.std(val_losses, axis=1)
+            val_losses_mean = np.mean(val_losses, axis=0)
+            val_losses_std = np.std(val_losses, axis=0)
 
         
-
+        print(train_losses_mean.shape)
+        
         assert train_losses_mean.shape[0] == n_epochs
 
 
@@ -170,12 +171,13 @@ def plot_learning_curves(train_losses, val_losses=None, level='epoch', ylim=None
             x,
             train_losses_mean - train_losses_std,
             train_losses_mean + train_losses_std,
-            alpha=0.1,
-            color="o",
+            alpha=0.3,
+            color="orange",
+            label="$\mu \pm \sigma$"
         )
 
         axes.plot(
-            x, train_losses_mean, "-", color="orange", label="Training Loss"
+            x, train_losses_mean, "-", color="orange", label=f"Mean Training Loss of {10} runs ($\mu$)"
         )
 
         if val_losses is not None:
@@ -184,7 +186,7 @@ def plot_learning_curves(train_losses, val_losses=None, level='epoch', ylim=None
                 val_losses_mean - val_losses_std,
                 val_losses_mean + val_losses_std,
                 alpha=0.1,
-                color="b",
+                color="blue",
             )
 
             axes.plot(
@@ -192,5 +194,5 @@ def plot_learning_curves(train_losses, val_losses=None, level='epoch', ylim=None
             )
     axes.legend(loc="best")
 
-    plt.savefig(f'plots/learningcurves_{fname}.pdf', format='pdf')
+    plt.savefig(f'plots/learning_curves/{fname}.pdf', format='pdf')
     plt.clf()
